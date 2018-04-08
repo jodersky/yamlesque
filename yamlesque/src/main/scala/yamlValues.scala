@@ -2,6 +2,7 @@ package yamlesque
 
 sealed trait YamlValue {
   def print: String = YamlValue.DefaultPrinter(this)
+  def convertTo[A: YamlReader]: A = implicitly[YamlReader[A]].read(this)
 }
 object YamlValue {
   val DefaultPrinter = new YamlPrinter(compact = true)

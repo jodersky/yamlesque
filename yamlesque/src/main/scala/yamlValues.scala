@@ -4,7 +4,7 @@ sealed trait YamlValue {
   def print: String = YamlValue.DefaultPrinter(this)
 }
 object YamlValue {
-  val DefaultPrinter = new YamlPrinter(true)
+  val DefaultPrinter = new YamlPrinter(compact = true)
 }
 
 case class YamlMapping(fields: Map[String, YamlValue]) extends YamlValue

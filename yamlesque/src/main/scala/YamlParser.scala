@@ -3,7 +3,7 @@ package yamlesque
 import annotation.{switch, tailrec}
 import scala.collection.mutable.ListBuffer
 
-object Parser {
+object YamlParser extends (Iterator[Char] => YamlValue) {
 
   sealed trait TokenKind
   object TokenKind {
@@ -166,98 +166,94 @@ object Parser {
     init()
   }
 
-  object Parser {
+  def parse(tokens: Iterator[Token]): YamlValue = {
+    var token0 = tokens.next()
+    var token1 = tokens.next()
 
-    class ParseException(val message: String) extends Exception(message)
-
-    def run(tokens: Iterator[Token]): YamlValue = {
-      var token0 = tokens.next()
-      var token1 = tokens.next()
-
-      def readNext(): Unit = {
-        token0 = token1
-        token1 = tokens.next()
-      }
-
-      def fatal(message: String, token: Token) = {
-        val completeMessage =
-          s"parse error at line ${token.line}, column ${token.col}: $message"
-        throw new ParseException(completeMessage)
-      }
-
-      def wrongKind(found: Token, required: TokenKind*) = {
-        fatal(
-          s"token kind not allowed at this position\n" +
-            s"  found: ${found.kind}\n" +
-            s"  required: ${required.mkString(" or ")}\n" +
-            " " * found.col + found.value + "\n" +
-            " " * found.col + "^",
-          found
-        )
-      }
-
-      def nextSequence() = {
-        val startCol = token0.col
-        val items = new ListBuffer[YamlValue]
-        while (startCol <= token0.col && token0.kind != EOF) {
-          token0.kind match {
-            case ITEM =>
-              readNext()
-              items += nextBlock(startCol)
-            case _ => wrongKind(token0, ITEM)
-          }
-        }
-        YamlSequence(items.toVector)
-      }
-
-      def nextMapping() = {
-        val startCol = token0.col
-        val fields = new ListBuffer[(String, YamlValue)]
-        while (startCol <= token0.col && token0.kind != EOF) {
-          token0.kind match {
-            case IDENTIFIER =>
-              val key = token0.value
-              readNext()
-              token0.kind match {
-                case MAPPING =>
-                  readNext()
-                  val value = nextBlock(startCol)
-                  fields += key -> value
-                case _ => wrongKind(token0, MAPPING)
-              }
-
-            case _ => wrongKind(token0, IDENTIFIER)
-          }
-        }
-        YamlMapping(fields.toMap)
-      }
-
-      def nextBlock(startCol: Int): YamlValue = {
-        if (token0.col < startCol) {
-          YamlScalar.Empty
-        } else {
-          token0.kind match {
-            case IDENTIFIER =>
-              if (token1.kind == MAPPING && token0.line == token1.line) {
-                nextMapping()
-              } else {
-                val y = YamlScalar(token0.value)
-                readNext()
-                y
-              }
-            case ITEM =>
-              nextSequence()
-            case EOF => YamlScalar.Empty
-            case _   => wrongKind(token0, IDENTIFIER, ITEM)
-          }
-        }
-      }
-
-      nextBlock(0)
+    def readNext(): Unit = {
+      token0 = token1
+      token1 = tokens.next()
     }
+
+    def fatal(message: String, token: Token) = {
+      val completeMessage =
+        s"parse error at line ${token.line}, column ${token.col}: $message"
+      throw new ParseException(completeMessage)
+    }
+
+    def wrongKind(found: Token, required: TokenKind*) = {
+      fatal(
+        s"token kind not allowed at this position\n" +
+          s"  found: ${found.kind}\n" +
+          s"  required: ${required.mkString(" or ")}\n" +
+          " " * found.col + found.value + "\n" +
+          " " * found.col + "^",
+        found
+      )
+    }
+
+    def nextSequence() = {
+      val startCol = token0.col
+      val items = new ListBuffer[YamlValue]
+      while (startCol <= token0.col && token0.kind != EOF) {
+        token0.kind match {
+          case ITEM =>
+            readNext()
+            items += nextBlock(startCol)
+          case _ => wrongKind(token0, ITEM)
+        }
+      }
+      YamlSequence(items.toVector)
+    }
+
+    def nextMapping() = {
+      val startCol = token0.col
+      val fields = new ListBuffer[(String, YamlValue)]
+      while (startCol <= token0.col && token0.kind != EOF) {
+        token0.kind match {
+          case IDENTIFIER =>
+            val key = token0.value
+            readNext()
+            token0.kind match {
+              case MAPPING =>
+                readNext()
+                val value = nextBlock(startCol)
+                fields += key -> value
+              case _ => wrongKind(token0, MAPPING)
+            }
+
+          case _ => wrongKind(token0, IDENTIFIER)
+        }
+      }
+      YamlMapping(fields.toMap)
+    }
+
+    def nextBlock(startCol: Int): YamlValue = {
+      if (token0.col < startCol) {
+        YamlScalar.Empty
+      } else {
+        token0.kind match {
+          case IDENTIFIER =>
+            if (token1.kind == MAPPING && token0.line == token1.line) {
+              nextMapping()
+            } else {
+              val y = YamlScalar(token0.value)
+              readNext()
+              y
+            }
+          case ITEM =>
+            nextSequence()
+          case EOF => YamlScalar.Empty
+          case _   => wrongKind(token0, IDENTIFIER, ITEM)
+        }
+      }
+    }
+
+    nextBlock(0)
   }
 
-  def parse(data: String): YamlValue = {
-    Parser.run(new Scanner(data.toIterator))
-  }
+  def apply(data: Iterator[Char]): YamlValue = parse(new Scanner(data))
+
 }
+
+class ParseException(val message: String) extends Exception(message)

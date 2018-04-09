@@ -8,10 +8,7 @@ before_install:
   - curl https://raw.githubusercontent.com/scala-native/scala-native/master/scripts/travis_setup.sh | bash -x
 
 script:
-  - > sbt
-    yamlesqueJVM/scalafmtCheck
-    yamlesque-spray-jsonJVM/scalafmtCheck
-    +test
+  - sbt yamlesqueJVM/scalafmtCheck yamlesque-spray-jsonJVM/scalafmtCheck +test
 
 cache:
   directories:

@@ -27,22 +27,21 @@ lazy val yamlesqueJVM    = yamlesque.jvm
 lazy val yamlesqueJS     = yamlesque.js
 lazy val yamlesqueNative = yamlesque.native
 
-lazy val yamlesqueSpray = crossProject(JVMPlatform)
+lazy val `yamlesque-spray-json` = crossProject(JVMPlatform)
   .crossType(CrossType.Pure)
-  .in(file("yamlesque-spray"))
   .dependsOn(yamlesque)
   .settings(testSettings)
   .settings(
     libraryDependencies += "io.spray" %%% "spray-json" % "1.3.4"
   )
-lazy val yamlesqueSprayJVM = yamlesqueSpray.jvm
+lazy val `yamlesque-spray-jsonJVM` = `yamlesque-spray-json`.jvm
 
 lazy val root = (project in file("."))
   .aggregate(
     yamlesqueJVM,
     yamlesqueJS,
     yamlesqueNative,
-    yamlesqueSprayJVM
+    `yamlesque-spray-jsonJVM`
   )
   .settings(
     publish := {},

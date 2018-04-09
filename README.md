@@ -4,13 +4,8 @@ Pure Scala YAML parsing.
 
 As the name suggests, "yam-el-esque" is a Scala implementation of the
 most frequently used YAML features. It takes inspiration from
-Spray-JSON and aims to provide an idiomatic, to-the-point API that is
-cross-platform and has a minimal set of dependencies.
-
-It does not strictly implement all features as defined in [YAML
-1.2](http://yaml.org/spec/1.2/spec.html), however support should be
-sufficient for regular use. Pull requests with additional feature
-implementations are always welcome!
+Spray-JSON and aims to provide an idiomatic API that is cross-platform
+and has a minimal set of dependencies.
 
 ## Getting Started
 Include yamlesque into a project. In sbt, this can be done with:
@@ -31,6 +26,27 @@ val text = s"""|name: yamlesque
                |  - name: Another
                |""".stripMargin
 
-// parse yaml to a typesafe representation
+// parse yaml to a type safe representation
 val yaml = text.parseYaml
 ```
+
+### Integration with Spray-JSON
+*TODO*
+
+### Integration with Akka-HTTP
+*TODO*
+
+## YAML Conformance
+
+Yamlesque does not strictly implement all features as defined in [YAML
+1.2](http://yaml.org/spec/1.2/spec.html), however support should be
+sufficient for most regular documents. Pull requests with additional
+feature implementations are always welcome!
+
+The current feature restrictions are:
+
+- always assumes utf-8 is used
+- anchors and references are not supported
+- tags are not supported
+- flow-styles (aka inline JSON) aren't supported
+- only single-line literals are allowed (no > or | blocks)

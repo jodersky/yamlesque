@@ -12,12 +12,12 @@ and has a minimal set of dependencies.
 ## Getting Started
 Include yamlesque into a project. In sbt, this can be done with:
 
-```
+```scala
 libraryDependencies += "io.crashbox" %% "yamlesque" % "<latest_tag>"
 ```
 
 ### Parse some YAML
-```
+```scala
 import yamlesque._
 
 val text = s"""|name: yamlesque

@@ -23,8 +23,8 @@ lazy val yamlesque = crossProject(JVMPlatform, JSPlatform, NativePlatform)
     nativeLinkStubs := true // required for utest
   )
 
-lazy val yamlesqueJVM    = yamlesque.jvm
-lazy val yamlesqueJS     = yamlesque.js
+lazy val yamlesqueJVM = yamlesque.jvm
+lazy val yamlesqueJS = yamlesque.js
 lazy val yamlesqueNative = yamlesque.native
 
 lazy val `yamlesque-spray-json` = crossProject(JVMPlatform)

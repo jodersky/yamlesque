@@ -6,8 +6,7 @@ val testSettings = Seq(
   testFrameworks += new TestFramework("utest.runner.Framework")
 )
 
-
-lazy val yamlesque = crossProject(JSPlatform, JVMPlatform, NativePlatform)
+lazy val yamlesque = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
   .settings(testSettings)
   .settings(
@@ -28,14 +27,24 @@ lazy val yamlesqueJVM    = yamlesque.jvm
 lazy val yamlesqueJS     = yamlesque.js
 lazy val yamlesqueNative = yamlesque.native
 
-lazy val yamlesqueSpray = crossProject(JSPlatform, JVMPlatform, NativePlatform)
+lazy val yamlesqueSpray = crossProject(JVMPlatform)
   .crossType(CrossType.Pure)
   .in(file("yamlesque-spray"))
   .dependsOn(yamlesque)
   .settings(testSettings)
   .settings(
-    libraryDependencies += "io.spray" %% "spray-json" % "1.3.4"
+    libraryDependencies += "io.spray" %%% "spray-json" % "1.3.4"
   )
-lazy val yamlesqueSprayJVM    = yamlesqueSpray.jvm
-lazy val yamlesqueSprayJS     = yamlesqueSpray.js
-lazy val yamlesqueSprayNative = yamlesqueSpray.native
+lazy val yamlesqueSprayJVM = yamlesqueSpray.jvm
+
+lazy val root = (project in file("."))
+  .aggregate(
+    yamlesqueJVM,
+    yamlesqueJS,
+    yamlesqueNative,
+    yamlesqueSprayJVM
+  )
+  .settings(
+    publish := {},
+    publishLocal := {}
+  )

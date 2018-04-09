@@ -140,20 +140,19 @@ object YamlParser extends (Iterator[Char] => YamlValue) {
     }
 
     private def fetchScalar(): Unit = {
-      def finishScalar() = token = Token(IDENTIFIER, tokenValue())
+      val l = line
+      val c = col
       @tailrec def fetchRest(): Unit = ch0 match {
         case ':' if isBlank(ch1) =>
-          finishScalar()
+          token = Token(IDENTIFIER, tokenValue())
         case LF =>
-          finishScalar()
+          token = Token(IDENTIFIER, tokenValue())
         case SU =>
-          finishScalar()
+          token = Token(IDENTIFIER, tokenValue())
         case c =>
           putChar()
           fetchRest()
       }
-      val l = line
-      val c = col
       fetchRest()
       token.setPos(l, c)
     }
@@ -199,7 +198,7 @@ object YamlParser extends (Iterator[Char] => YamlValue) {
         token0.kind match {
           case ITEM =>
             readNext()
-            items += nextBlock(startCol)
+            items += nextBlock(startCol + 1)
           case _ => wrongKind(token0, ITEM)
         }
       }
@@ -217,7 +216,7 @@ object YamlParser extends (Iterator[Char] => YamlValue) {
             token0.kind match {
               case MAPPING =>
                 readNext()
-                val value = nextBlock(startCol)
+                val value = nextBlock(startCol + 1)
                 fields += key -> value
               case _ => wrongKind(token0, MAPPING)
             }
@@ -230,7 +229,7 @@ object YamlParser extends (Iterator[Char] => YamlValue) {
 
     def nextBlock(startCol: Int): YamlValue = {
       if (token0.col < startCol) {
-        YamlScalar.Empty
+        YamlEmpty
       } else {
         token0.kind match {
           case IDENTIFIER =>
@@ -243,7 +242,7 @@ object YamlParser extends (Iterator[Char] => YamlValue) {
             }
           case ITEM =>
             nextSequence()
-          case EOF => YamlScalar.Empty
+          case EOF => YamlEmpty
           case _   => wrongKind(token0, IDENTIFIER, ITEM)
         }
       }

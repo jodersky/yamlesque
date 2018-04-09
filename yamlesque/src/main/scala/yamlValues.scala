@@ -19,6 +19,5 @@ object YamlSequence {
 }
 
 case class YamlScalar(value: String) extends YamlValue
-object YamlScalar {
-  final val Empty = YamlScalar("")
-}
+
+case object YamlEmpty extends YamlValue

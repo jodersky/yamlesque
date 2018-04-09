@@ -38,6 +38,8 @@ class YamlPrinter(compact: Boolean = true) extends (YamlValue => String) {
               p(value, indentation + 1)
           }
         }
+      case YamlEmpty =>
+        str += '\n'
     }
     p(value, 0)
     str.toString

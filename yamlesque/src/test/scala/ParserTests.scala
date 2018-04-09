@@ -6,7 +6,7 @@ object ParserTests extends TestSuite {
 
   val tests = Tests {
     "parse empty string" - {
-      "".parseYaml ==> YamlScalar.Empty
+      "".parseYaml ==> YamlEmpty
     }
     "parse simple scalar" - {
       "hello".parseYaml ==> YamlScalar("hello")
@@ -27,7 +27,7 @@ object ParserTests extends TestSuite {
       "-hello world".parseYaml ==> YamlScalar("-hello world")
     }
     "parse empty list" - {
-      "-".parseYaml ==> YamlSequence(YamlScalar.Empty)
+      "-".parseYaml ==> YamlSequence(YamlEmpty)
     }
     "parse a simple list" - {
       "-\n  a\n-\n  b\n-\n  c".parseYaml ==> YamlSequence(YamlScalar("a"),
@@ -106,13 +106,13 @@ object ParserTests extends TestSuite {
     }
     "parse a simple mapping without a value" - {
       "a:\n".parseYaml ==> YamlMapping(
-        "a" -> YamlScalar("")
+        "a" -> YamlEmpty
       )
     }
     "parse a mapping without a value" - {
       "k1: v1\nk2:\nk3: v3".parseYaml ==> YamlMapping(
         "k1" -> YamlScalar("v1"),
-        "k2" -> YamlScalar.Empty,
+        "k2" -> YamlEmpty,
         "k3" -> YamlScalar("v3")
       )
     }

@@ -17,7 +17,7 @@ trait JsonYamlFormats {
 object JsonFormats {
 
   def jsonToYaml(js: JsValue): YamlValue = js match {
-    case JsNull => YamlScalar.Empty
+    case JsNull => YamlEmpty
     case JsNumber(number) => YamlScalar(number.toString)
     case JsBoolean(value) => YamlScalar(value.toString)
     case JsString(value) => YamlScalar(value)
@@ -28,7 +28,7 @@ object JsonFormats {
   val JsNumberPattern = """([-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?)""".r
 
   def yamlToJson(yaml: YamlValue): JsValue = yaml match {
-    case YamlScalar.Empty => JsNull
+    case YamlEmpty => JsNull
     case YamlScalar("true") => JsTrue
     case YamlScalar("false") => JsFalse
     case YamlScalar(JsNumberPattern(x)) => JsNumber(x.toDouble)

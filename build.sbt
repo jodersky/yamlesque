@@ -48,7 +48,3 @@ lazy val root = (project in file("."))
     yamlesqueNative,
     `yamlesque-spray-jsonJVM`
   )
-  .settings(
-    publish := {},
-    publishLocal := {}
-  )

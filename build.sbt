@@ -6,6 +6,11 @@ val testSettings = Seq(
   testFrameworks += new TestFramework("utest.runner.Framework")
 )
 
+version in ThisBuild := {
+  import sys.process._
+  ("git describe --always --dirty=-SNAPSHOT --match v[0-9].*" !!).tail.trim
+}
+
 lazy val yamlesque = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .crossType(CrossType.Pure)
   .settings(testSettings)

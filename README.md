@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/jodersky/yamlesque.svg?branch=master)](https://travis-ci.org/jodersky/yamlesque)
+
 # yamlesque
 
 Pure Scala YAML parsing.

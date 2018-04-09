@@ -1,10 +1,17 @@
+sudo: required
 language: scala
 
 jdk:
   - oraclejdk8
 
+before_install:
+  - curl https://raw.githubusercontent.com/scala-native/scala-native/master/scripts/travis_setup.sh | bash -x
+
 script:
-  - sbt scalafmtCheck +test
+  - > sbt
+    yamlesqueJVM/scalafmtCheck
+    yamlesque-spray-jsonJVM/scalafmtCheck
+    +test
 
 cache:
   directories:

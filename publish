@@ -1,0 +1,19 @@
+#!/bin/bash
+
+set -o errexit
+
+# Tests are run on a subset of projects
+mill yamlesque.jvm[2.13].test
+mill yamlesque.jvm[2.12].test
+mill yamlesque.js[2.13].test
+mill yamlesque.js[2.12].test
+mill yamlesque.native[2.11].test
+
+# All projects are compiled
+mill yamlesque.jvm[_].compile
+mill yamlesque.js[_].compile
+mill yamlesque.native[_].compile
+
+mill mill.scalalib.PublishModule/publishAll \
+    --sonatypeCreds "8VNUX6+2:$(pass infra/ci-sonatype | head -n 1)" \
+    --publishArtifacts __.publishArtifacts

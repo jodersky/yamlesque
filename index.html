@@ -1,0 +1,67 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            font-family: sans-serif;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: row;
+            align-items: stretch;
+            justify-content: stretch;
+        }
+
+        div {
+            flex: 1;
+            display: flex;
+            flex-direction: row;
+            align-items: stretch;
+            justify-content: stretch;
+
+            border: 1px solid #f1f1f1;
+            border-radius: .25em;
+            padding: 1em;
+            margin: 1em;
+            box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+        }
+
+        textarea {
+            flex: 1;
+            resize: none;
+        }
+
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+
+<body>
+    <div>
+        <textarea id="input" oninput="generate()" placeholder="write yaml here" oninput="parse()"></textarea>
+    </div>
+
+    <div>
+        <textarea id="output" placeholder="output" readonly></textarea>
+    </div>
+
+    <script type="text/javascript" src="out.js"></script>
+    <script type="text/javascript">
+        function generate() {
+            var str = document.getElementById("input").value
+            yaml.update(str)
+        }
+    </script>
+
+</body>
+
+</html>

@@ -19,9 +19,13 @@ class YamlesquesModule(crossVersion: String) extends ScalaModule with PublishMod
   )
   def artifactName = "yamlesque"
 
+  def ivyDeps = Agg(ivy"com.lihaoyi::geny::0.6.10")
+
   object test extends Tests with ScalaModule {
     def millSourcePath = build.millSourcePath / "yamlesque" / "test"
-    def ivyDeps = Agg(ivy"com.lihaoyi::utest::0.7.10")
+    def ivyDeps = Agg(
+      ivy"com.lihaoyi::utest::0.7.10"
+    )
     def testFramework = "utest.runner.Framework"
   }
 }

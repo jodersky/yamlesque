@@ -2,7 +2,7 @@
 
 Pure Scala YAML parsing.
 
-As the name suggests, "yam-el-esque" is a Scala implementation of the most
+As the name suggests, "yaml-esque" is a Scala implementation of the most
 frequently used YAML features. It takes inspiration from [Haoyi Li's
 ujson](http://www.lihaoyi.com/post/uJsonfastflexibleandintuitiveJSONforScala.html)
 and aims to provide an idiomatic API that is cross-platform and has no
@@ -24,7 +24,7 @@ Include yamlesque into a project.
   libraryDependencies += "io.crashbox" %%% "yamlesque" % "<latest_tag>"
   ```
 
-**Yamlesque is available for Scala 2.13, 2.12 and 2.11, including ScalaJS and
+**Yamlesque is available for Scala 3 and 2.13, including ScalaJS and
 Native.**
 
 It should also work with Scala 2.10 and 2.9, although no pre-compiled libraries

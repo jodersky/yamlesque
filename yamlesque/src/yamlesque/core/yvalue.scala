@@ -4,7 +4,72 @@ import scala.collection.mutable
 
 import scala.language.implicitConversions
 
-sealed trait Value
+sealed trait Value {
+  //override def httpContentType = Some("application/json")
+  //def value: Any
+
+  /**
+    * Returns the `String` value of this [[Value]], fails if it is not
+    * a [[yamlesque.Str]]
+    */
+  def str = this match{
+    case Str(value) => value
+    case _ => throw Value.InvalidData(this, "Expected yamlesque.Str")
+  }
+
+  /**
+    * Returns an Optional `String` value of this [[Value]] in case this [[Value]] is a 'String'.
+    */
+  def strOpt = this match{
+    case Str(value) => Some(value)
+    case _ => None
+  }
+
+  /**
+    * Returns the key/value map of this [[Value]], fails if it is not
+    * a [[yamlesque.Obj]]
+    */
+  def obj = this match{
+    case Obj(value) => value
+    case _ => throw Value.InvalidData(this, "Expected yamlesque.Obj")
+  }
+  /**
+    * Returns an Optional key/value map of this [[Value]] in case this [[Value]] is a 'Obj'.
+    */
+  def objOpt = this match{
+    case Obj(value) => Some(value)
+    case _ => None
+  }
+  /**
+    * Returns the elements of this [[Value]], fails if it is not
+    * a [[yamlesque.Arr]]
+    */
+  def arr = this match{
+    case Arr(value) => value
+    case _ => throw Value.InvalidData(this, "Expected yamlesque.Arr")
+  }
+  /**
+    * Returns The optional elements of this [[Value]] in case this [[Value]] is a 'Arr'.
+    */
+  def arrOpt = this match{
+    case Arr(value) => Some(value)
+    case _ => None
+  }
+
+}
+
+object Value {
+  /**
+    * Thrown when uPickle tries to convert a JSON blob into a given data
+    * structure but fails because part the blob is invalid
+    *
+    * @param data The section of the JSON blob that uPickle tried to convert.
+    *             This could be the entire blob, or it could be some subtree.
+    * @param msg Human-readable text saying what went wrong
+    */
+  case class InvalidData(data: Value, msg: String)
+    extends Exception(s"$msg (data: $data)")
+}
 
 case class Obj(values: mutable.LinkedHashMap[String, Value]) extends Value
 object Obj{

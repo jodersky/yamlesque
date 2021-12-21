@@ -38,7 +38,6 @@ val text = s"""|name: yamlesque
                |authors:
                |  - name: Jakob Odersky
                |    id: jodersky
-               |  - name: Another
                |""".stripMargin
 
 val yaml: yamlesque.Node = yamlesque.read(text)
@@ -122,3 +121,28 @@ Unsupported features with no planned implementation:
 - tags
 
 Pull requests with additional feature implementations are always welcome!
+
+## Geny-Compatible
+
+The core type `yamlesque.Value` is a `geny.Writable`. This means that it will
+work "out-of-the-box" with many other libraries from the ["Singaporean
+Stack"](https://github.com/com-lihaoyi). Some examples:
+
+Read YAML from a file, using the os-lib library:
+
+```scala
+yamlesque.read(os.read.stream(os.pwd / "config.yaml"))
+```
+
+Send it as part of a HTTP request, using the scala-requests library:
+
+```scala
+val yaml: yamlesque.Value = ...
+
+requests.post(
+  "https://....",
+  body = yaml
+)
+```
+
+Send it as part of a HTTP response, using the cask framework.

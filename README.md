@@ -5,7 +5,7 @@ Pure Scala YAML parsing.
 As the name suggests, "yaml-esque" is a Scala implementation of the most
 frequently used YAML features. It takes inspiration from [Haoyi Li's
 ujson](http://www.lihaoyi.com/post/uJsonfastflexibleandintuitiveJSONforScala.html)
-and aims to provide an idiomatic API that is cross-platform and has no
+library and aims to provide an idiomatic API that is cross-platform and has no
 dependencies.
 
 ## Getting Started
@@ -15,20 +15,20 @@ Include yamlesque into a project.
 - mill:
 
   ```scala
-  def ivyDeps = Agg(ivy"io.crashbox::yamlesque::<latest_tag>")
+  ivy"io.crashbox::yamlesque::<latest_tag>"
   ```
 
 - sbt:
 
   ```scala
-  libraryDependencies += "io.crashbox" %%% "yamlesque" % "<latest_tag>"
+  "io.crashbox" %%% "yamlesque" % "<latest_tag>"
   ```
 
 **Yamlesque is available for Scala 3 and 2.13, including ScalaJS and
 Native.**
 
-It should also work with Scala 2.10 and 2.9, although no pre-compiled libraries
-are published for these versions.
+It should also work with Scala 2.12, 2.11, 2.10 and 2.9, although no
+pre-compiled libraries are published for these versions.
 
 ### Read Some YAML
 
@@ -51,7 +51,7 @@ println(id) // == "jodersky"
 ### Write Some YAML
 
 ```scala
-import yamlesque.{Arr, Num, Obj, Str}
+import yamlesque.core.{Arr, Obj, Str}
 val config = Obj(
   "auth" -> Obj(
     "username" -> Str("admin"),
@@ -60,16 +60,16 @@ val config = Obj(
   "interfaces" -> Arr(
     Obj(
       "address" -> Str("0.0.0.0"),
-      "port" -> Num(80)
+      "port" -> Str("80")
     ),
     Obj(
       "address" -> Str("0.0.0.0"),
-      "port" -> Num(443)
+      "port" -> Str("443")
     )
   )
 )
 
-val stringly = yamlesque.write(config)
+val stringly = config.render()
 
 println(stringly)
 ```
@@ -82,9 +82,9 @@ auth:
   password: guest
 interfaces:
   - address: 0.0.0.0
-    port: 80.0
+    port: 80
   - address: 0.0.0.0
-    port: 443.0
+    port: 443
 ```
 
 ## Official YAML Conformance
@@ -93,23 +93,32 @@ Yamlesque does not strictly implement all features as defined in [YAML
 1.2](http://yaml.org/spec/1.2/spec.html), however support should be
 sufficient for most regular documents.
 
+**A major point of divergence between official YAML and this library is the way
+in which typing of strings is done. Whereas official YAML implicitly casts
+strings to narrower types when possible (for example the string "2" is treated
+as the number 2), this library always treats strings as text. This approach
+leads to a more uniform parsing system which avoids many subtle bugs, including
+the infamous [Norway
+Problem](https://hitchdev.com/strictyaml/why/implicit-typing-removed/). In your
+application of course, you are still free to attempt to read strings as
+diffferent types. Just the parser won't do this for you.**
+
 Available features:
 
-- plain strings (i.e. scalars), including specialization to numbers, booleans
-  and null
+- strings: plain (i.e. scalars) and quoted
+- block-style strings (| and >)
 - lists and maps
-- quoted strings
 - comments
-- multiple documents (i.e. ---)
 
 Features which are currently not supported but for which support is planned:
 
-- verbatim blocks (i.e. | and >) (support is limited currently)
-- flow-styles (aka inline JSON)
+- multiple documents (i.e. ---)
 
 Unsupported features with no planned implementation:
 
 - anchors and references
+- flow-styles (aka inline JSON)
+- chomping modifiers (e.g. the '-' in '>-')
 - tags
 
 Pull requests with additional feature implementations are always welcome!

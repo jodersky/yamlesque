@@ -1,5 +1,3 @@
-package yamlesque
-
 import utest._
 
 object CommentTest extends TestSuite {

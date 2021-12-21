@@ -1,5 +1,3 @@
-package yamlesque
-
 import utest._
 
 object NegTest extends TestSuite {

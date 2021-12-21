@@ -4,9 +4,8 @@ import scala.collection.mutable
 
 import scala.language.implicitConversions
 
-sealed trait Value {
-  //override def httpContentType = Some("application/json")
-  //def value: Any
+sealed trait Value extends geny.Writable {
+  override def httpContentType = Some("application/yaml")
 
   /**
     * Returns the `String` value of this [[Value]], fails if it is not
@@ -56,9 +55,46 @@ sealed trait Value {
     case _ => None
   }
 
+  def transform[T](f: Visitor[T]): T = Value.transform(this, f)
+
+  def writeBytesTo(out: java.io.OutputStream): Unit = {
+    val renderer = new CompactPrinter(out)
+    transform(renderer)
+  }
+
+  def render(codec: String = "utf-8"): String = {
+    val stream = new java.io.ByteArrayOutputStream
+    writeBytesTo(stream)
+    new String(stream.toByteArray(), codec)
+  }
+
 }
 
 object Value {
+
+  def transform[T](value: Value, f: Visitor[T]): T = {
+    value match {
+      case Null() => f.visitEmpty()
+      case Str(s) => f.visitString(s)
+      case Arr(items) =>
+        val arrVisitor = f.visitArray()
+        for ((item, idx) <- items.zipWithIndex) {
+          arrVisitor.visitIndex(idx)
+          val child = transform(item, arrVisitor.subVisitor())
+          arrVisitor.visitValue(child)
+        }
+        arrVisitor.visitEnd()
+      case Obj(items) =>
+        val objVisitor = f.visitObject()
+        for ((key, value) <- items) {
+          objVisitor.visitKey(key)
+          val child = transform(value, objVisitor.subVisitor())
+          objVisitor.visitValue(child)
+        }
+        objVisitor.visitEnd()
+    }
+  }
+
   /**
     * Thrown when uPickle tries to convert a JSON blob into a given data
     * structure but fails because part the blob is invalid
@@ -73,8 +109,8 @@ object Value {
 
 case class Obj(values: mutable.LinkedHashMap[String, Value]) extends Value
 object Obj{
-  implicit def from(items: TraversableOnce[(String, Value)]): Obj = {
-    Obj(mutable.LinkedHashMap(items.toSeq:_*))
+  implicit def from(items: IterableOnce[(String, Value)]): Obj = {
+    Obj(mutable.LinkedHashMap(items.iterator.toSeq:_*))
   }
   // Weird telescoped version of `apply(items: (String, Value)*)`, to avoid
   // type inference issues due to overloading the existing `apply` method
@@ -93,9 +129,9 @@ object Obj{
 
 case class Arr(values: mutable.ArrayBuffer[Value]) extends Value
 object Arr{
-  implicit def from[T](items: TraversableOnce[T])(implicit conv: T => Value): Arr = {
+  implicit def from[T](items: IterableOnce[T])(implicit conv: T => Value): Arr = {
     val buf = new mutable.ArrayBuffer[Value]()
-    items.foreach{ item =>
+    items.iterator.foreach{ item =>
       buf += (conv(item): Value)
     }
     Arr(buf)

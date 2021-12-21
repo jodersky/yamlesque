@@ -221,45 +221,54 @@ class Parser(input: java.io.InputStream, filename: String) {
     }
   }
 
-  private def parseMap(): Obj = {
+  private def parseMap[T](visitor: ObjectVisitor[T]): T = {
     val scol = tcol
     val data = LinkedHashMap.empty[String, Value]
     while (tcol == scol && tok != Eof) {
       val key = parseKey()
+      visitor.visitKey(key)
 
       if (scol < tcol) {
-        data += key -> parseValue(scol + 1)
+        val value = parseValue(scol + 1, visitor.subVisitor())
+        visitor.visitValue(value)
       } else if (scol == tcol && tok == Item) { // special case: lists can start at same indentation as keys
-        data += key -> parseList()
+        val value = parseList(visitor.subVisitor().visitArray())
+        visitor.visitValue(value)
       } else {
-        data += key -> Null()
+        val value = visitor.subVisitor().visitEmpty()
+        visitor.visitValue(value)
       }
     }
     if (scol < tcol && tok != Eof) tokenError("Entries within the same map must start at the same column.")
-    Obj(data)
+    visitor.visitEnd()
   }
 
 
-  private def parseList(): Arr = {
+  private def parseList[T](visitor: ArrayVisitor[T]): T = {
     val scol = tcol
     val data = ArrayBuffer.empty[Value]
+    var idx = 0
     while (tcol == scol && tok != Eof) {
+      visitor.visitIndex(idx)
       tok match {
         case Item =>
           readToken()
           if (scol < tcol) {
-            data += parseValue(scol + 1)
+            val value = parseValue(scol + 1, visitor.subVisitor())
+            visitor.visitValue(value)
           } else {
-            data += Null()
+            val value = visitor.subVisitor().visitEmpty()
+            visitor.visitValue(value)
           }
         case other => tokenExpectedError(Item)
       }
+      idx += 1
     }
     if (scol < tcol && tok != Eof) tokenError("Items within the same list must start at the same column.")
-    Arr(data)
+    visitor.visitEnd()
   }
 
-  private def parseText(): Str = {
+  private def parseText(): String = {
     val scol = tcol
     val data = new StringBuilder()
 
@@ -279,7 +288,7 @@ class Parser(input: java.io.InputStream, filename: String) {
       data ++= tokenBuffer.result()
       readToken()
     }
-    Str(data.result())
+    data.result()
   }
 
   // This drops down to reading individual characters instead of tokens
@@ -290,7 +299,7 @@ class Parser(input: java.io.InputStream, filename: String) {
   //   somekey: >
   //    foo
   //    ^ minimum start position in this case
-  private def parseTextBlock(minCol: Int): Str = {
+  private def parseTextBlock(minCol: Int): String = {
     val literal = tok match {
       case LitStyle => true
       case FoldStyle => false
@@ -362,19 +371,19 @@ class Parser(input: java.io.InputStream, filename: String) {
         }
       }
     }
-    val r = Str(tokenBuffer.result())
+    val r = tokenBuffer.result()
     readToken() // since this function worked directly on chars, we need to pull in the next token
     r
   }
 
-  def parseValue(minCol: Int): Value = {
+  def parseValue[T](minCol: Int, visitor: Visitor[T]): T = {
     tok match {
-      case Eof => Null()
-      case Key => parseMap()
-      case Text => parseText()
-      case Item => parseList()
-      case LitStyle => parseTextBlock(minCol)
-      case FoldStyle => parseTextBlock(minCol)
+      case Eof => visitor.visitEmpty()
+      case Key => parseMap(visitor.visitObject())
+      case Text => visitor.visitString(parseText())
+      case Item => parseList(visitor.visitArray())
+      case LitStyle => visitor.visitBlockStringLiteral(parseTextBlock(minCol))
+      case FoldStyle => visitor.visitBlockStringFolded(parseTextBlock(minCol))
     }
   }
 }
@@ -382,7 +391,7 @@ class Parser(input: java.io.InputStream, filename: String) {
 object `package` {
 
   def read(readable: geny.Readable, filename: String = "virtual"): Value = readable.readBytesThrough{ s =>
-    new Parser(s, filename).parseValue(0)
+    new Parser(s, filename).parseValue(0, new ValueBuilder)
   }
 
 }

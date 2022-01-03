@@ -88,11 +88,11 @@ interfaces:
 
 ## Official YAML Conformance
 
-Yamlesque does not strictly implement all features as defined in [YAML
+**Yamlesque does not strictly implement all features as defined in [YAML
 1.2](http://yaml.org/spec/1.2/spec.html), however support should be
-sufficient for most regular documents.
+sufficient for most regular documents.**
 
-**A major point of divergence between official YAML and this library is the way
+A major point of divergence between official YAML and this library is the way
 in which typing of strings is done. Whereas official YAML implicitly casts
 strings to narrower types when possible (for example the string "2" is treated
 as the number 2), this library always treats strings as text. This approach
@@ -100,11 +100,11 @@ leads to a more uniform parsing system which avoids many subtle bugs, including
 the infamous [Norway
 Problem](https://hitchdev.com/strictyaml/why/implicit-typing-removed/). In your
 application of course, you are still free to attempt to read strings as
-diffferent types. Just the parser won't do this for you.**
+diffferent types. Just the parser won't do this for you.
 
 Available features:
 
-- strings: plain (i.e. scalars) and quoted
+- strings: plain (i.e. scalars) and double quoted
 - block-style strings (| and >)
 - lists and maps
 - comments
@@ -112,6 +112,7 @@ Available features:
 Features which are currently not supported but for which support is planned:
 
 - multiple documents (i.e. ---)
+- single quoted strings
 
 Unsupported features with no planned implementation:
 

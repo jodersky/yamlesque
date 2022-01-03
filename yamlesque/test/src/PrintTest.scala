@@ -16,11 +16,11 @@ object PrintTest extends TestSuite {
                     |
                     |""".stripMargin
 
-      import yamlesque.{core => y}
+      import yamlesque._
 
-      val value: y.Value = y.read(text)
+      val value: Value = read(text)
 
-      y.read(value.render()) ==> value
+      read(value.render()) ==> value
     }
   }
 

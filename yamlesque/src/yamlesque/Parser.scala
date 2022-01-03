@@ -1,4 +1,4 @@
-package yamlesque.core
+package yamlesque
 
 import java.io.InputStream
 import scala.collection.mutable.LinkedHashMap
@@ -55,6 +55,7 @@ class Parser(input: java.io.InputStream, filename: String) {
   private sealed trait Token
   private case object Eof extends Token { override def toString = "EOF" }
   private case object Text extends Token { override def toString = "text" }
+  private case object QText extends Token { override def toString = "quoted text" }
   private case object Key extends Token { override def toString = "key" }
   private case object Item extends Token { override def toString = "list item" }
   private case object FoldStyle extends Token { override def toString = ">" }
@@ -142,7 +143,7 @@ class Parser(input: java.io.InputStream, filename: String) {
       }
     }
     readChar()
-    tok = Text
+    tok = QText
   }
 
   // TODO: call this to make comments available to user code
@@ -160,7 +161,6 @@ class Parser(input: java.io.InputStream, filename: String) {
       readChar()
     }
   }
-
 
   private def readToken(): Unit = {
     while (char == ' ' || char == '\n') readChar()
@@ -223,7 +223,6 @@ class Parser(input: java.io.InputStream, filename: String) {
 
   private def parseMap[T](visitor: ObjectVisitor[T]): T = {
     val scol = tcol
-    val data = LinkedHashMap.empty[String, Value]
     while (tcol == scol && tok != Eof) {
       val key = parseKey()
       visitor.visitKey(key)
@@ -246,7 +245,6 @@ class Parser(input: java.io.InputStream, filename: String) {
 
   private def parseList[T](visitor: ArrayVisitor[T]): T = {
     val scol = tcol
-    val data = ArrayBuffer.empty[Value]
     var idx = 0
     while (tcol == scol && tok != Eof) {
       visitor.visitIndex(idx)
@@ -272,12 +270,12 @@ class Parser(input: java.io.InputStream, filename: String) {
     val scol = tcol
     val data = new StringBuilder()
 
-    if (tok != Text) tokenExpectedError(Text)
+    if (tok != Text && tok != QText) tokenExpectedError(Text)
     var previousLine = tline
     data ++= tokenBuffer.result()
     readToken()
     while (scol <= tcol && tok != Eof) {
-      if (tok != Text) tokenExpectedError(Text)
+      if (tok != Text && tok != QText) tokenExpectedError(Text)
 
       if (tline - previousLine > 1) {
         for (_ <- 0 until tline - previousLine - 1) data += '\n'
@@ -381,17 +379,10 @@ class Parser(input: java.io.InputStream, filename: String) {
       case Eof => visitor.visitEmpty()
       case Key => parseMap(visitor.visitObject())
       case Text => visitor.visitString(parseText())
+      case QText => visitor.visitQuotedString(parseText())
       case Item => parseList(visitor.visitArray())
       case LitStyle => visitor.visitBlockStringLiteral(parseTextBlock(minCol))
       case FoldStyle => visitor.visitBlockStringFolded(parseTextBlock(minCol))
     }
   }
-}
-
-object `package` {
-
-  def read(readable: geny.Readable, filename: String = "virtual"): Value = readable.readBytesThrough{ s =>
-    new Parser(s, filename).parseValue(0, new ValueBuilder)
-  }
-
 }

@@ -12,9 +12,9 @@ object ReadmeTest extends TestSuite {
                     |  - name: Another
                     |""".stripMargin
 
-      import yamlesque.{core => y}
+      import yamlesque._
 
-      val value: y.Value = y.read(text)
+      val value: Value = read(text)
 
       val id = value.obj("authors").arr(0).obj("id").str
 
@@ -23,7 +23,7 @@ object ReadmeTest extends TestSuite {
       id ==> "jodersky"
     }
     test("write") {
-      import yamlesque.core.{Arr, Obj, Str}
+      import yamlesque._
       val config = Obj(
         "auth" -> Obj(
           "username" -> Str("admin"),

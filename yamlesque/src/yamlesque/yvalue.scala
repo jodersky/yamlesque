@@ -1,7 +1,6 @@
-package yamlesque.core
+package yamlesque
 
 import scala.collection.mutable
-
 import scala.language.implicitConversions
 
 sealed trait Value extends geny.Writable {

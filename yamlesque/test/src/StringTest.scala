@@ -1,7 +1,7 @@
 import utest._
 
 object StringTest extends TestSuite {
-  import yamlesque.core._
+  import yamlesque._
 
   def tests = Tests {
     test("literal") {

@@ -1,7 +1,7 @@
 import utest._
 
 object BasicTest extends TestSuite {
-  import yamlesque.core._
+  import yamlesque._
 
   val tests = Tests {
     test("empty doc") {

@@ -1,4 +1,4 @@
-package yamlesque.core
+package yamlesque
 
 trait Visitor[T]{
   def visitObject(): ObjectVisitor[T]
@@ -6,9 +6,9 @@ trait Visitor[T]{
   def visitEmpty(): T
 
   def visitString(text: CharSequence): T
+  def visitQuotedString(text: CharSequence): T
   def visitBlockStringLiteral(text: CharSequence): T
   def visitBlockStringFolded(text: CharSequence): T
-
 }
 trait ObjectVisitor[T]{
   def visitKey(key: String): Unit
@@ -31,6 +31,8 @@ class ValueBuilder() extends Visitor[Value] {
   def visitEmpty(): Value = Null()
 
   def visitString(text: CharSequence): Value = Str(text.toString())
+
+  def visitQuotedString(text: CharSequence): Value = Str(text.toString())
   def visitBlockStringLiteral(text: CharSequence) = Str(text.toString())
   def visitBlockStringFolded(text: CharSequence) = Str(text.toString())
 }
@@ -150,6 +152,8 @@ class CompactPrinter(out0: java.io.OutputStream) extends Visitor[Unit] with Arra
 
   def visitBlockStringFolded(text: CharSequence): Unit = visitString(text)
   def visitBlockStringLiteral(text: CharSequence): Unit = visitString(text)
+
+  def visitQuotedString(text: CharSequence): Unit = visitString(text)
 
   // TODO: handle multi-line text
   def visitString(text: CharSequence): Unit = out.print(text)

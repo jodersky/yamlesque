@@ -1,7 +1,7 @@
 import utest._
 
 object NegTest extends TestSuite {
-  import yamlesque.core._
+  import yamlesque._
 
   def tests = Tests {
     test("key and string") {

@@ -1,7 +1,7 @@
 import utest._
 
 object CommentTest extends TestSuite {
-  import yamlesque.core._
+  import yamlesque._
 
   val tests = Tests {
     test("comment") {

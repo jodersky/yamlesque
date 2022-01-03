@@ -8,7 +8,7 @@ val text: dom.html.TextArea =
 def update(str: String): Unit = {
   try {
     text.classList.remove("error")
-    val value = yamlesque.core.read(str)
+    val value = yamlesque.read(str)
     text.value = ujson.write(ytoj(value), 2)
   } catch {
     case ex: _ =>
@@ -17,20 +17,20 @@ def update(str: String): Unit = {
   }
 }
 
-def ytoj(y: yamlesque.core.Value): ujson.Value = y match {
-  case yamlesque.core.Obj(fields) =>
+def ytoj(y: yamlesque.Value): ujson.Value = y match {
+  case yamlesque.Obj(fields) =>
     val j = ujson.Obj()
     for ((k, v) <- fields) {
       j.obj += k -> ytoj(v)
     }
     j
-  case yamlesque.core.Arr(values) =>
+  case yamlesque.Arr(values) =>
     val j = ujson.Arr()
     for (v <- values) {
       j.arr += ytoj(v)
     }
     j
-  case yamlesque.core.Str(x)  => ujson.Str(x)
-  case yamlesque.core.Null()    => ujson.Null
+  case yamlesque.Str(x)  => ujson.Str(x)
+  case yamlesque.Null()    => ujson.Null
 }
 

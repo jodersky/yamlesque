@@ -1,12 +1,13 @@
 import mill._, scalalib._, scalajslib._, scalanativelib._, scalalib.publish._
 
 val scala3 = "3.0.2"
-val scala213 = "2.13.7"
+val scala31 = "3.1.1" // temporary, until 3.1.2 is out at which point we'll use the -Yrelease flag to target old versions
+val scala213 = "2.13.8"
 val scalajs = "1.8.0"
-val scalanative = "0.4.2"
+val scalanative = "0.4.3"
 
 trait Utest extends ScalaModule with TestModule {
-  def ivyDeps = Agg(ivy"com.lihaoyi::utest::0.7.10")
+  def ivyDeps = Agg(ivy"com.lihaoyi::utest::0.7.11")
   def testFramework = "utest.runner.Framework"
 }
 
@@ -31,7 +32,7 @@ object yamlesque extends Module {
       with Publish {
     def scalacOptions = Seq("-feature", "-deprecation", "-release", "8")
     def artifactName = "yamlesque"
-    def ivyDeps = Agg(ivy"com.lihaoyi::geny::0.6.10")
+    def ivyDeps = Agg(ivy"com.lihaoyi::geny::0.7.1")
   }
 
   class JvmModule(val crossScalaVersion: String) extends YamlesquesModule {
@@ -59,7 +60,7 @@ object yamlesque extends Module {
     def sources = T.sources(super.sources() ++ Seq(PathRef(millSourcePath / "src-native")))
     object test extends Tests with Utest
   }
-  object native extends Cross[NativeModule]((scala213, scalanative))
+  object native extends Cross[NativeModule]((scala213, scalanative), (scala31, scalanative))
 
 }
 
@@ -68,7 +69,7 @@ object site extends ScalaJSModule {
   def scalaJSVersion = scalajs
   def moduleDeps = Seq(yamlesque.js(scala3, scalajs))
   def ivyDeps = Agg(
-    ivy"com.lihaoyi::ujson::1.4.3",
+    ivy"com.lihaoyi::ujson::1.5.0",
     ivy"org.scala-js::scalajs-dom::2.0.0"
   )
 }
@@ -78,7 +79,7 @@ object `yamlesque-upickle` extends Module { self =>
   trait Base extends CrossScalaModule with Publish {
     def scalacOptions = Seq("-feature", "-deprecation", "-release", "8")
     def artifactName = "yamlesque-upickle"
-    def ivyDeps = Agg(ivy"com.lihaoyi::upickle::1.4.3")
+    def ivyDeps = Agg(ivy"com.lihaoyi::upickle::1.5.0")
     def millSourcePath = self.millSourcePath
   }
 
@@ -104,6 +105,6 @@ object `yamlesque-upickle` extends Module { self =>
     def scalaNativeVersion = crossScalaNativeVersion
     object test extends Tests with Utest
   }
-  object native extends Cross[NativeModule]((scala213, scalanative))
+  object native extends Cross[NativeModule]((scala213, scalanative), (scala31, scalanative))
 
 }

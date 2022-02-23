@@ -9,6 +9,7 @@ val scalanative = "0.4.3"
 trait Utest extends ScalaModule with TestModule {
   def ivyDeps = Agg(ivy"com.lihaoyi::utest::0.7.11")
   def testFramework = "utest.runner.Framework"
+  def docJar = PathRef(os.pwd / "README.md") // TODO: regular docJar fails under scala 3.1.1
 }
 
 trait Publish extends PublishModule {
@@ -59,6 +60,7 @@ object yamlesque extends Module {
     def millSourcePath = super.millSourcePath / os.up / os.up
     def sources = T.sources(super.sources() ++ Seq(PathRef(millSourcePath / "src-native")))
     object test extends Tests with Utest
+    def docJar = PathRef(os.pwd / "README.md") // TODO: regular docJar fails under scala 3.1.1
   }
   object native extends Cross[NativeModule]((scala213, scalanative), (scala31, scalanative))
 
@@ -104,6 +106,7 @@ object `yamlesque-upickle` extends Module { self =>
     def moduleDeps = Seq(yamlesque.native(crossScalaVersion, crossScalaNativeVersion))
     def scalaNativeVersion = crossScalaNativeVersion
     object test extends Tests with Utest
+    def docJar = PathRef(os.pwd / "README.md") // TODO: regular docJar fails under scala 3.1.1
   }
   object native extends Cross[NativeModule]((scala213, scalanative), (scala31, scalanative))
 

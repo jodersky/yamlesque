@@ -7,7 +7,7 @@ set -o errexit
 ghpages=.ghpages
 git_url="git@github.com:jodersky/yamlesque.git"
 
-mill site.fullOpt
+./mill site.fullOpt
 mkdir -p "$ghpages"
 cp -f site/index.html "$ghpages"
 cp -f out/site/fullOpt.dest/out.js "$ghpages"

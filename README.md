@@ -1,10 +1,13 @@
 # yamlesque
 
+[![project chat](https://img.shields.io/badge/zulip-join_chat-brightgreen.svg)](https://crashbox.zulipchat.com/#narrow/stream/343723-yamlesque)
+[![yamlesque Scala version support](https://index.scala-lang.org/jodersky/yamlesque/yamlesque/latest.svg)](https://index.scala-lang.org/jodersky/yamlesque/yamlesque)
+[![stability: soft](https://img.shields.io/badge/stability-soft-white)](https://www.crashbox.io/stability.html)
+
 Pure Scala YAML parsing.
 
 As the name suggests, "yaml-esque" is a Scala implementation of the most
-frequently used YAML features. It takes inspiration from [Haoyi Li's
-ujson](http://www.lihaoyi.com/post/uJsonfastflexibleandintuitiveJSONforScala.html)
+frequently used YAML features. It takes inspiration from [Li Haoyi's ujson](http://www.lihaoyi.com/post/uJsonfastflexibleandintuitiveJSONforScala.html)
 library and aims to provide an idiomatic API that is cross-platform and has no
 dependencies.
 
@@ -30,6 +33,11 @@ Native.**
 It should also work with Scala 2.12, 2.11, 2.10 and 2.9, although no
 pre-compiled libraries are published for these versions.
 
+### :point_right: [Online Converter](https://jodersky.github.io/yamlesque/) :point_left:
+
+Built with ScalaJS, this online converter allows you to transform
+YAML to JSON as you type.
+
 ### Read Some YAML
 
 ```scala
@@ -40,7 +48,7 @@ val text = s"""|name: yamlesque
                |    id: jodersky
                |""".stripMargin
 
-val yaml: yamlesque.Node = yamlesque.read(text)
+val yaml: yamlesque.Value = yamlesque.read(text)
 
 val id = yaml.obj("authors").arr(0).obj("id").str
 
@@ -50,20 +58,20 @@ println(id) // == "jodersky"
 ### Write Some YAML
 
 ```scala
-import yamlesque.core.{Arr, Obj, Str}
-val config = Obj(
-  "auth" -> Obj(
-    "username" -> Str("admin"),
-    "password" -> Str("guest")
+import yamlesque as y
+val config = y.Obj(
+  "auth" -> y.Obj(
+    "username" -> y.Str("admin"),
+    "password" -> y.Str("guest")
   ),
-  "interfaces" -> Arr(
-    Obj(
-      "address" -> Str("0.0.0.0"),
-      "port" -> Str("80")
+  "interfaces" -> y.Arr(
+    y.Obj(
+      "address" -> y.Str("0.0.0.0"),
+      "port" -> y.Str("80")
     ),
-    Obj(
-      "address" -> Str("0.0.0.0"),
-      "port" -> Str("443")
+    y.Obj(
+      "address" -> y.Str("0.0.0.0"),
+      "port" -> y.Str("443")
     )
   )
 )

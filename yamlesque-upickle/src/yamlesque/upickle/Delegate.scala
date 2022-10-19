@@ -32,14 +32,14 @@ class UjsonArrayDelegate[A](d: upickle.core.ArrVisitor[_, A]) extends ArrayVisit
   override def subVisitor(): Visitor[A] = {
     new UjsonDelegate[A](d.subVisitor.asInstanceOf[upickle.core.Visitor[_, A]])
   }
-  override def visitValue(value: A): Unit = d.narrow.visitValue(value, -1)
+  override def visitValue(value: Any): Unit = d.narrow.visitValue(value, -1)
   override def visitEnd(): A = d.visitEnd(-1)
 }
 
 class UjsonObjectDelegate[A](d: upickle.core.ObjVisitor[_, A]) extends ObjectVisitor[A] {
   def visitKey(key: String): Unit = d.visitKeyValue(d.visitKey(-1).visitString(key, -1))
   def subVisitor(): Visitor[A] = new UjsonDelegate[A](d.subVisitor.asInstanceOf[upickle.core.Visitor[_, A]])
-  def visitValue(value: A): Unit = d.narrow.visitValue(value, -1)
+  def visitValue(value: Any): Unit = d.narrow.visitValue(value, -1)
   def visitEnd(): A = d.visitEnd(-1)
 
 }

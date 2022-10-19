@@ -1,6 +1,6 @@
 package yamlesque
 
-trait Visitor[T]{
+trait Visitor[+T]{
   def visitObject(): ObjectVisitor[T]
   def visitArray(): ArrayVisitor[T]
   def visitEmpty(): T
@@ -10,16 +10,16 @@ trait Visitor[T]{
   def visitBlockStringLiteral(text: CharSequence): T
   def visitBlockStringFolded(text: CharSequence): T
 }
-trait ObjectVisitor[T]{
+trait ObjectVisitor[+T]{
   def visitKey(key: String): Unit
-  def subVisitor(): Visitor[T]
-  def visitValue(value: T): Unit
+  def subVisitor(): Visitor[_]
+  def visitValue(value: Any): Unit
   def visitEnd(): T
 }
-trait ArrayVisitor[T]{
+trait ArrayVisitor[+T]{
   def visitIndex(idx: Int): Unit
-  def subVisitor(): Visitor[T]
-  def visitValue(value: T): Unit
+  def subVisitor(): Visitor[_]
+  def visitValue(value: Any): Unit
   def visitEnd(): T
 }
 
@@ -43,8 +43,8 @@ class ObjectBuilder() extends ObjectVisitor[Value] {
 
   def visitKey(key: String): Unit = _key = key
   def subVisitor(): Visitor[Value] =  new ValueBuilder()
-  def visitValue(value: Value): Unit = {
-    obj.values += _key -> value
+  def visitValue(value: Any): Unit = {
+    obj.values += _key -> value.asInstanceOf[Value]
   }
   def visitEnd(): Value = obj
 }
@@ -55,7 +55,7 @@ class ArrayBuilder() extends ArrayVisitor[Value] {
 
   def visitIndex(idx: Int): Unit = _idx = idx
   def subVisitor(): Visitor[Value] = new ValueBuilder()
-  def visitValue(value: Value): Unit = arr.values.insert(_idx, value)
+  def visitValue(value: Any): Unit = arr.values.insert(_idx, value.asInstanceOf[Value])
   def visitEnd(): Value = arr
 }
 
@@ -136,7 +136,7 @@ class CompactPrinter(out0: java.io.OutputStream) extends Visitor[Unit] with Arra
     isMaps.push(true)
   }
 
-  def visitValue(value: Unit): Unit = {
+  def visitValue(value: Any): Unit = {
     cols.pop()
     isMaps.pop()
   }

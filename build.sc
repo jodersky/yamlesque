@@ -13,7 +13,7 @@ trait Utest extends ScalaModule with TestModule {
 }
 
 trait Publish extends PublishModule {
-  def publishVersion = T.input{os.proc("git", "describe", "--dirty", "--match=v*").call().out.trim.tail}
+  def publishVersion = T.input{os.proc("git", "describe", "--dirty").call().out.trim}
   def pomSettings = PomSettings(
     description = "Simple YAML parsing.",
     organization = "io.crashbox",

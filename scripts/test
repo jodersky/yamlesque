@@ -1,4 +1,4 @@
 #!/bin/bash
 set -o errexit
 
-mill __.test
+./mill __.test

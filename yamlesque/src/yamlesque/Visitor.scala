@@ -1,49 +1,54 @@
 package yamlesque
 
-trait Visitor[+T]{
-  def visitObject(): ObjectVisitor[T]
-  def visitArray(): ArrayVisitor[T]
-  def visitEmpty(): T
+trait Ctx {
+  def pos: Position
+  def line: String
+}
 
-  def visitString(text: CharSequence): T
-  def visitQuotedString(text: CharSequence): T
-  def visitBlockStringLiteral(text: CharSequence): T
-  def visitBlockStringFolded(text: CharSequence): T
+trait Visitor[+T]{
+  def visitObject(ctx: Ctx): ObjectVisitor[T]
+  def visitArray(ctx: Ctx): ArrayVisitor[T]
+  def visitEmpty(ctx: Ctx): T
+
+  def visitString(ctx: Ctx, text: CharSequence): T
+  def visitQuotedString(ctx: Ctx, text: CharSequence): T
+  def visitBlockStringLiteral(ctx: Ctx, text: CharSequence): T
+  def visitBlockStringFolded(ctx: Ctx, text: CharSequence): T
 }
 trait ObjectVisitor[+T]{
-  def visitKey(key: String): Unit
+  def visitKey(ctx: Ctx, key: String): Unit
   def subVisitor(): Visitor[_]
-  def visitValue(value: Any): Unit
+  def visitValue(ctx: Ctx, value: Any): Unit
   def visitEnd(): T
 }
 trait ArrayVisitor[+T]{
-  def visitIndex(idx: Int): Unit
+  def visitIndex(ctx: Ctx, idx: Int): Unit
   def subVisitor(): Visitor[_]
-  def visitValue(value: Any): Unit
+  def visitValue(ctx: Ctx, value: Any): Unit
   def visitEnd(): T
 }
 
 class ValueBuilder() extends Visitor[Value] {
   var value: Value = Null()
 
-  def visitObject(): ObjectVisitor[Value] = new ObjectBuilder()
-  def visitArray(): ArrayVisitor[Value] = new ArrayBuilder()
-  def visitEmpty(): Value = Null()
+  def visitObject(ctx: Ctx): ObjectVisitor[Value] = new ObjectBuilder()
+  def visitArray(ctx: Ctx): ArrayVisitor[Value] = new ArrayBuilder()
+  def visitEmpty(ctx: Ctx): Value = Null()
 
-  def visitString(text: CharSequence): Value = Str(text.toString())
+  def visitString(ctx: Ctx, text: CharSequence): Value = Str(text.toString())
 
-  def visitQuotedString(text: CharSequence): Value = Str(text.toString())
-  def visitBlockStringLiteral(text: CharSequence) = Str(text.toString())
-  def visitBlockStringFolded(text: CharSequence) = Str(text.toString())
+  def visitQuotedString(ctx: Ctx, text: CharSequence): Value = Str(text.toString())
+  def visitBlockStringLiteral(ctx: Ctx, text: CharSequence) = Str(text.toString())
+  def visitBlockStringFolded(ctx: Ctx, text: CharSequence) = Str(text.toString())
 }
 
 class ObjectBuilder() extends ObjectVisitor[Value] {
   val obj = Obj()
   private var _key: String = _
 
-  def visitKey(key: String): Unit = _key = key
+  def visitKey(ctx: Ctx, key: String): Unit = _key = key
   def subVisitor(): Visitor[Value] =  new ValueBuilder()
-  def visitValue(value: Any): Unit = {
+  def visitValue(ctx: Ctx, value: Any): Unit = {
     obj.values += _key -> value.asInstanceOf[Value]
   }
   def visitEnd(): Value = obj
@@ -53,9 +58,9 @@ class ArrayBuilder() extends ArrayVisitor[Value] {
   val arr = Arr()
   var _idx = 0
 
-  def visitIndex(idx: Int): Unit = _idx = idx
+  def visitIndex(ctx: Ctx, idx: Int): Unit = _idx = idx
   def subVisitor(): Visitor[Value] = new ValueBuilder()
-  def visitValue(value: Any): Unit = arr.values.insert(_idx, value.asInstanceOf[Value])
+  def visitValue(ctx: Ctx, value: Any): Unit = arr.values.insert(_idx, value.asInstanceOf[Value])
   def visitEnd(): Value = arr
 }
 
@@ -115,7 +120,7 @@ class CompactPrinter(out0: java.io.OutputStream) extends Visitor[Unit] with Arra
 
   def subVisitor() = this
   def visitEnd(): Unit = {}
-  def visitIndex(idx: Int): Unit = {
+  def visitIndex(ctx: Ctx, idx: Int): Unit = {
     out.println()
     for (_ <- 0 until col) out.print(' ')
     out.print("- ")
@@ -123,7 +128,7 @@ class CompactPrinter(out0: java.io.OutputStream) extends Visitor[Unit] with Arra
     isMaps.push(false)
   }
 
-  def visitKey(key: String): Unit = {
+  def visitKey(ctx: Ctx, key: String): Unit = {
     if (isMap) {
       out.println()
       for (_ <- 0 until col) out.print(' ')
@@ -136,26 +141,26 @@ class CompactPrinter(out0: java.io.OutputStream) extends Visitor[Unit] with Arra
     isMaps.push(true)
   }
 
-  def visitValue(value: Any): Unit = {
+  def visitValue(ctx: Ctx, value: Any): Unit = {
     cols.pop()
     isMaps.pop()
   }
 
-  def visitArray(): ArrayVisitor[Unit] = {
+  def visitArray(ctx: Ctx): ArrayVisitor[Unit] = {
     this
   }
-  def visitObject(): ObjectVisitor[Unit] = {
+  def visitObject(ctx: Ctx): ObjectVisitor[Unit] = {
     this
   }
 
-  def visitEmpty(): Unit = ()
+  def visitEmpty(ctx: Ctx): Unit = ()
 
-  def visitBlockStringFolded(text: CharSequence): Unit = visitString(text)
-  def visitBlockStringLiteral(text: CharSequence): Unit = visitString(text)
+  def visitBlockStringFolded(ctx: Ctx, text: CharSequence): Unit = visitString(ctx, text)
+  def visitBlockStringLiteral(ctx: Ctx,text: CharSequence): Unit = visitString(ctx, text)
 
-  def visitQuotedString(text: CharSequence): Unit = visitString(text)
+  def visitQuotedString(ctx: Ctx,text: CharSequence): Unit = visitString(ctx, text)
 
   // TODO: handle multi-line text
-  def visitString(text: CharSequence): Unit = out.print(text)
+  def visitString(ctx: Ctx, text: CharSequence): Unit = out.print(text)
 
 }

@@ -72,23 +72,27 @@ sealed trait Value extends geny.Writable {
 object Value {
 
   def transform[T](value: Value, f: Visitor[T]): T = {
+    val ctx = new Ctx {
+      val pos = Position("", 0, 0)
+      val line = ""
+    }
     value match {
-      case Null() => f.visitEmpty()
-      case Str(s) => f.visitString(s)
+      case Null() => f.visitEmpty(ctx)
+      case Str(s) => f.visitString(ctx, s)
       case Arr(items) =>
-        val arrVisitor = f.visitArray()
+        val arrVisitor = f.visitArray(ctx)
         for ((item, idx) <- items.zipWithIndex) {
-          arrVisitor.visitIndex(idx)
+          arrVisitor.visitIndex(ctx, idx)
           val child = transform(item, arrVisitor.subVisitor())
-          arrVisitor.visitValue(child)
+          arrVisitor.visitValue(ctx, child)
         }
         arrVisitor.visitEnd()
       case Obj(items) =>
-        val objVisitor = f.visitObject()
+        val objVisitor = f.visitObject(ctx)
         for ((key, value) <- items) {
-          objVisitor.visitKey(key)
+          objVisitor.visitKey(ctx, key)
           val child = transform(value, objVisitor.subVisitor())
-          objVisitor.visitValue(child)
+          objVisitor.visitValue(ctx, child)
         }
         objVisitor.visitEnd()
     }

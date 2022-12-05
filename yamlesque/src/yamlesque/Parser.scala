@@ -12,7 +12,12 @@ case class ParseException(
   position: Position,
   message: String,
   line: String
-) extends Exception(message: String)
+) extends Exception(message: String) {
+  def pretty = {
+    val caret = " " * (position.col - 1) + "^"
+    s"$message\n$position\n$line\n$caret"
+  }
+}
 
 
 class Parser(input: java.io.InputStream, filename: String) {
@@ -66,6 +71,9 @@ class Parser(input: java.io.InputStream, filename: String) {
   private var tcol = ccol
   private val tokenBuffer = new StringBuilder
   private var tok: Token = _
+  private def tpos = Position(filename, tline, tcol)
+
+  case class Ctx(pos: Position, line: String = lineBuffer.result()) extends yamlesque.Ctx
 
   private def readKeyOrText(): Unit = {
     while (true) {
@@ -202,10 +210,8 @@ class Parser(input: java.io.InputStream, filename: String) {
     }
 
     val line = lineBuffer.result()
-    val caret = " " * (tcol - 1) + "^"
     val pos = Position(filename, tline, tcol)
-    val pretty = s"$message\n$pos\n$line\n$caret"
-    throw new ParseException(pos, pretty, line)
+    throw new ParseException(pos, message, line)
   }
   private def tokenExpectedError(expected: Token) = {
     tokenError(s"Expected $expected. Found: $tok")
@@ -224,39 +230,42 @@ class Parser(input: java.io.InputStream, filename: String) {
   private def parseMap[T](visitor: ObjectVisitor[T]): T = {
     val scol = tcol
     while (tcol == scol && tok != Eof) {
+      val p = tpos
       val key = parseKey()
-      visitor.visitKey(key)
+      visitor.visitKey(Ctx(p), key)
 
+      val ctx = Ctx(tpos)
       if (scol < tcol) {
         val value = parseValue(scol + 1, visitor.subVisitor())
-        visitor.visitValue(value)
+        visitor.visitValue(ctx, value)
       } else if (scol == tcol && tok == Item) { // special case: lists can start at same indentation as keys
-        val value = parseList(visitor.subVisitor().visitArray())
-        visitor.visitValue(value)
+        val value = parseList(visitor.subVisitor().visitArray(ctx))
+        visitor.visitValue(ctx, value)
       } else {
-        val value = visitor.subVisitor().visitEmpty()
-        visitor.visitValue(value)
+        val value = visitor.subVisitor().visitEmpty(ctx)
+        visitor.visitValue(ctx, value)
       }
     }
     if (scol < tcol && tok != Eof) tokenError("Entries within the same map must start at the same column.")
     visitor.visitEnd()
   }
 
-
   private def parseList[T](visitor: ArrayVisitor[T]): T = {
     val scol = tcol
     var idx = 0
     while (tcol == scol && tok != Eof) {
-      visitor.visitIndex(idx)
+      val ctx = Ctx(tpos)
+      visitor.visitIndex(ctx, idx)
       tok match {
         case Item =>
           readToken()
+          val ctx = Ctx(tpos)
           if (scol < tcol) {
             val value = parseValue(scol + 1, visitor.subVisitor())
-            visitor.visitValue(value)
+            visitor.visitValue(ctx, value)
           } else {
-            val value = visitor.subVisitor().visitEmpty()
-            visitor.visitValue(value)
+            val value = visitor.subVisitor().visitEmpty(ctx)
+            visitor.visitValue(ctx, value)
           }
         case other => tokenExpectedError(Item)
       }
@@ -375,14 +384,15 @@ class Parser(input: java.io.InputStream, filename: String) {
   }
 
   def parseValue[T](minCol: Int, visitor: Visitor[T]): T = {
+    val ctx = Ctx(tpos)
     tok match {
-      case Eof => visitor.visitEmpty()
-      case Key => parseMap(visitor.visitObject())
-      case Text => visitor.visitString(parseText())
-      case QText => visitor.visitQuotedString(parseText())
-      case Item => parseList(visitor.visitArray())
-      case LitStyle => visitor.visitBlockStringLiteral(parseTextBlock(minCol))
-      case FoldStyle => visitor.visitBlockStringFolded(parseTextBlock(minCol))
+      case Eof => visitor.visitEmpty(ctx)
+      case Key => parseMap(visitor.visitObject(ctx))
+      case Text => visitor.visitString(ctx, parseText())
+      case QText => visitor.visitQuotedString(ctx, parseText())
+      case Item => parseList(visitor.visitArray(ctx))
+      case LitStyle => visitor.visitBlockStringLiteral(ctx, parseTextBlock(minCol))
+      case FoldStyle => visitor.visitBlockStringFolded(ctx, parseTextBlock(minCol))
     }
   }
 }

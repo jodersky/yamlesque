@@ -4,11 +4,11 @@ val scala3 = "3.3.3"
 val scala213 = "2.13.14"
 val scalajs = "1.16.0"
 val scalanative = "0.5.1"
-//def millSourcePath = super.millSourcePath / crossValue
-trait Utest extends TestModule {
+
+trait Utest extends ScalaModule with TestModule {
   def ivyDeps = Agg(ivy"com.lihaoyi::utest::0.8.3")
   def testFramework = "utest.runner.Framework"
-  // def docJar = PathRef(os.pwd / "README.md") // TODO: regular docJar fails under scala 3.1.1
+  def docJar = PathRef(os.pwd / "README.md") // TODO: regular docJar fails under scala 3
 }
 
 trait Publish extends PublishModule {
@@ -31,30 +31,24 @@ object yamlesque extends Module {
     def scalacOptions = Seq("-feature", "-deprecation", "-release", "8")
     def artifactName = "yamlesque"
     def ivyDeps = Agg(ivy"com.lihaoyi::geny::1.1.0")
+    def millSourcePath = super.millSourcePath / os.up
   }
 
   trait JvmModule extends Cross.Module[String] with YamlesquesModule {
     val scalaVersion = crossValue
-    def millSourcePath = super.millSourcePath / os.up
-    def sources = T.sources(super.sources() ++ Seq(PathRef(millSourcePath / "src-jvm")))
     object test extends ScalaTests with Utest
   }
   object jvm extends Cross[JvmModule](Seq(scala213, scala3))
 
   trait JsModule extends Cross.Module2[String, String] with YamlesquesModule with ScalaJSModule {
     val (scalaVersion, scalaJSVersion) = (crossValue, crossValue2)
-    def millSourcePath = super.millSourcePath / os.up / os.up
-    def sources = T.sources(super.sources() ++ Seq(PathRef(millSourcePath / "src-js")))
     object test extends ScalaJSTests with Utest
   }
-  object js extends Cross[JsModule](Seq((scala213, scalajs), (scala3, scalajs)))
+  object js extends Cross[JsModule]((scala213, scalajs), (scala3, scalajs))
 
   trait NativeModule extends Cross.Module2[String, String] with YamlesquesModule with ScalaNativeModule {
     val (scalaVersion, scalaNativeVersion) = (crossValue, crossValue2)
-    def millSourcePath = super.millSourcePath / os.up / os.up
-    def sources = T.sources(super.sources() ++ Seq(PathRef(millSourcePath / "src-native")))
     object test extends ScalaNativeTests with Utest
-    // def docJar = PathRef(os.pwd / "README.md") // TODO: regular docJar fails under scala 3.1.1
   }
   object native extends Cross[NativeModule](Seq((scala213, scalanative), (scala3, scalanative)))
 

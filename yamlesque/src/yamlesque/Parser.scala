@@ -20,7 +20,8 @@ case class ParseException(
 }
 
 
-class Parser(input: java.io.InputStream, filename: String) {
+class Parser(input0: java.io.InputStream, filename: String) {
+  val input = new java.io.InputStreamReader(input0, "utf-8")
 
   // character state
   private var cline = 1

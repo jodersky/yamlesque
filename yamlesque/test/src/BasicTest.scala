@@ -136,5 +136,8 @@ object BasicTest extends TestSuite {
         "a" -> Arr(Obj("b" -> Arr(Str("c"))))
       )
     }
+    test("utf8") {
+      read("€") ==> Str("€")
+    }
   }
 }

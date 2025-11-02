@@ -1,18 +1,20 @@
+//| mill-version: 1.0.6
+
 import mill._, scalalib._, scalajslib._, scalanativelib._, scalalib.publish._
 
-val scala3 = "3.3.3"
-val scala213 = "2.13.14"
-val scalajs = "1.16.0"
-val scalanative = "0.5.1"
+val scala3 = "3.3.6"
+val scala213 = "2.13.17"
+val scalajs = "1.20.1"
+val scalanative = "0.5.9"
 
 trait Utest extends ScalaModule with TestModule {
-  def ivyDeps = Agg(ivy"com.lihaoyi::utest::0.8.3")
+  def mvnDeps = Seq(mvn"com.lihaoyi::utest::0.9.1")
   def testFramework = "utest.runner.Framework"
   def docJar = PathRef(os.pwd / "README.md") // TODO: regular docJar fails under scala 3
 }
 
 trait Publish extends PublishModule {
-  def publishVersion = T.input{os.proc("git", "describe", "--dirty").call().out.trim()}
+  def publishVersion = Task.Input{os.proc("git", "describe", "--dirty").call().out.trim()}
   def pomSettings = PomSettings(
     description = "Simple YAML parsing.",
     organization = "io.crashbox",
@@ -30,24 +32,26 @@ object yamlesque extends Module {
   trait YamlesquesModule extends ScalaModule with Publish {
     def scalacOptions = Seq("-feature", "-deprecation", "-release", "8")
     def artifactName = "yamlesque"
-    def ivyDeps = Agg(ivy"com.lihaoyi::geny::1.1.0")
-    def millSourcePath = super.millSourcePath / os.up
+    def mvnDeps = Seq(mvn"com.lihaoyi::geny::1.1.0")
+    def moduleDir = super.moduleDir / os.up
   }
 
   trait JvmModule extends Cross.Module[String] with YamlesquesModule {
-    val scalaVersion = crossValue
+    def scalaVersion = crossValue
     object test extends ScalaTests with Utest
   }
   object jvm extends Cross[JvmModule](Seq(scala213, scala3))
 
   trait JsModule extends Cross.Module2[String, String] with YamlesquesModule with ScalaJSModule {
-    val (scalaVersion, scalaJSVersion) = (crossValue, crossValue2)
+    def scalaVersion = crossValue
+    def scalaJSVersion = crossValue2
     object test extends ScalaJSTests with Utest
   }
   object js extends Cross[JsModule]((scala213, scalajs), (scala3, scalajs))
 
   trait NativeModule extends Cross.Module2[String, String] with YamlesquesModule with ScalaNativeModule {
-    val (scalaVersion, scalaNativeVersion) = (crossValue, crossValue2)
+    def scalaVersion = crossValue
+    def scalaNativeVersion = crossValue2
     object test extends ScalaNativeTests with Utest
   }
   object native extends Cross[NativeModule](Seq((scala213, scalanative), (scala3, scalanative)))
@@ -58,9 +62,9 @@ object site extends ScalaJSModule {
   def scalaVersion = scala3
   def scalaJSVersion = scalajs
   def moduleDeps = Seq(yamlesque.js(scala3, scalajs))
-  def ivyDeps = Agg(
-    ivy"com.lihaoyi::ujson::3.3.0",
-    ivy"org.scala-js::scalajs-dom::2.8.0"
+  def mvnDeps = Seq(
+    mvn"com.lihaoyi::ujson::3.3.0",
+    mvn"org.scala-js::scalajs-dom::2.8.0"
   )
 }
 
@@ -69,8 +73,8 @@ object site extends ScalaJSModule {
 //   trait Base extends ScalaModule with Publish {
 //     def scalacOptions = Seq("-feature", "-deprecation", "-release", "8")
 //     def artifactName = "yamlesque-upickle"
-//     def ivyDeps = Agg(ivy"com.lihaoyi::upickle::3.3.0")
-//     def millSourcePath = self.millSourcePath
+//     def mvnDeps = Seq(mvn"com.lihaoyi::upickle::3.3.0")
+//     def moduleDir = self.moduleDir
 //   }
 
 //   trait JvmModule extends Cross.Module[String] with Base {

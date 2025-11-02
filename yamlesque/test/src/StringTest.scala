@@ -115,7 +115,7 @@ object StringTest extends TestSuite {
               |""".stripMargin) ==> Obj("a" -> Str("\nhello\nworld\n foo\nbar"))
     }
     test("invalid map") {
-      val e = intercept[ParseException] {
+      val e = assertThrows[ParseException] {
         read("""|a: |
                 |hello
                 |""".stripMargin)
@@ -135,7 +135,7 @@ object StringTest extends TestSuite {
               |""".stripMargin) ==> Arr(Str("hello"))
     }
     test("invalid list") {
-      val e = intercept[ParseException] {
+      val e = assertThrows[ParseException] {
         read("""|- |
                 |hello
                 |""".stripMargin)

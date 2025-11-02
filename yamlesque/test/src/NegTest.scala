@@ -5,35 +5,35 @@ object NegTest extends TestSuite {
 
   def tests = Tests {
     test("key and string") {
-      intercept[ParseException] {
+      assertThrows[ParseException] {
         read("""|b:
                 |a
                 |""".stripMargin)
       }
     }
     test("list and key") {
-      intercept[ParseException] {
+      assertThrows[ParseException] {
         read("""|- b:
                 |a:
                 |""".stripMargin)
       }
     }
     test("list and string") {
-      intercept[ParseException] {
+      assertThrows[ParseException] {
         read("""|-
                 |a
                 |""".stripMargin)
       }
     }
     test("list and key") {
-      intercept[ParseException] {
+      assertThrows[ParseException] {
         read("""|-
                 |a:
                 |""".stripMargin)
       }
     }
     test("key alignment") {
-      intercept[ParseException] {
+      assertThrows[ParseException] {
         read("""|a:
                 |  a:
                 | b:
@@ -41,7 +41,7 @@ object NegTest extends TestSuite {
       }
     }
     test("list alignment") {
-      intercept[ParseException] {
+      assertThrows[ParseException] {
         read("""|-
                 |  -
                 | -
@@ -49,7 +49,7 @@ object NegTest extends TestSuite {
       }
     }
     // test("verbatim end") {
-    //   intercept[ParseException] {
+    //   assertThrows[ParseException] {
     //     read("""|a: |
     //             |   foo
     //             |  b # b is parsed as a scalar
@@ -57,7 +57,7 @@ object NegTest extends TestSuite {
     //   }
     // }
     // test("verbatim before last token") {
-    //   intercept[ParseException] {
+    //   assertThrows[ParseException] {
     //     read("""|a:
     //             |   a: |
     //             |   b
@@ -66,7 +66,7 @@ object NegTest extends TestSuite {
     //   }
     // }
     // test("verbatim before last token 2") {
-    //   intercept[ParseException] {
+    //   assertThrows[ParseException] {
     //     read("""|a:
     //             |  a:
     //             |    a: |

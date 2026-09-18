@@ -124,7 +124,7 @@ name: second
 
 **Yamlesque does not strictly implement all features as defined in [YAML
 1.2](http://yaml.org/spec/1.2/spec.html), however support should be
-sufficient for most regular documents.**
+sufficient for most common documents.**
 
 Unquoted (plain) scalars are typed according to the YAML 1.2 core schema:
 
@@ -143,14 +143,15 @@ Available features:
 - strings: plain (i.e. scalars), single and double quoted
 - block-style strings (| and >), including chomping modifiers (e.g. the '-' in
   '>-')
-- lists and maps
+- lists and maps, in block style and flow style (e.g. `[a, b]` and `{a: b}`,
+  which also covers inline JSON)
 - comments
 - multiple documents (i.e. ---)
 
 Unsupported features with no planned implementation:
 
 - anchors and references
-- flow-styles (aka inline JSON)
+- complex keys (e.g. `? key` or using a list or map as a key)
 - explicit indentation indicators for block-style strings (e.g. the '2' in '|2')
 - tags
 

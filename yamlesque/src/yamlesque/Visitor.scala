@@ -128,9 +128,21 @@ class CompactPrinter(out0: java.io.OutputStream) extends Visitor[Unit] with Arra
   cols.push(0)
   isMaps.push(false)
 
+  // for each open collection: how to write it if it has no entries, or null
+  // once it has some
+  private val empties = collection.mutable.Stack.empty[String]
+  private def markNonEmpty(): Unit = {
+    empties.pop()
+    empties.push(null)
+  }
+
   def subVisitor() = this
-  def visitEnd(): Unit = {}
+  def visitEnd(): Unit = {
+    val empty = empties.pop()
+    if (empty != null) out.print(empty)
+  }
   def visitIndex(ctx: Ctx, idx: Int): Unit = {
+    markNonEmpty()
     out.println()
     for (_ <- 0 until col) out.print(' ')
     out.print("- ")
@@ -139,6 +151,7 @@ class CompactPrinter(out0: java.io.OutputStream) extends Visitor[Unit] with Arra
   }
 
   def visitKey(ctx: Ctx, key: String): Unit = {
+    markNonEmpty()
     if (isMap) {
       out.println()
       for (_ <- 0 until col) out.print(' ')
@@ -157,9 +170,11 @@ class CompactPrinter(out0: java.io.OutputStream) extends Visitor[Unit] with Arra
   }
 
   def visitArray(ctx: Ctx): ArrayVisitor[Unit] = {
+    empties.push("[]")
     this
   }
   def visitObject(ctx: Ctx): ObjectVisitor[Unit] = {
+    empties.push("{}")
     this
   }
 
@@ -177,12 +192,12 @@ class CompactPrinter(out0: java.io.OutputStream) extends Visitor[Unit] with Arra
   def visitString(ctx: Ctx, text: CharSequence): Unit = {
     val s = text.toString
     // quote strings which would otherwise be read back as null, a boolean, a
-    // number, quoted text or a document marker
+    // number, quoted text, a flow collection or a document marker
     val marker = (s.startsWith("---") || s.startsWith("...")) &&
       (s.length == 3 || " \t\r\n".indexOf(s(3)) >= 0)
     val typed = Parser.isNullLiteral(s) || Parser.boolLiteral(s).isDefined ||
       Parser.isNumberLiteral(s)
-    if (s.isEmpty || typed || s(0) == '\'' || s(0) == '"' || marker) {
+    if (s.isEmpty || typed || "'\"[{".indexOf(s(0)) >= 0 || marker) {
       out.print('\'')
       out.print(s.replace("'", "''"))
       out.print('\'')

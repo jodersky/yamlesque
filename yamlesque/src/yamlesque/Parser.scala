@@ -261,6 +261,8 @@ class Parser(input: java.io.InputStream, filename: String) {
   private case object LitStyle extends Token { override def toString = "|" }
   private case object DocStart extends Token { override def toString = "---" }
   private case object DocEnd extends Token { override def toString = "..." }
+  // start of a flow collection, i.e. `[` or `{`; the bracket is not consumed
+  private case object Flow extends Token { override def toString = "flow collection" }
 
   // whether the current token ends the current document
   private def atDocEnd = tok == Eof || tok == DocStart || tok == DocEnd
@@ -275,6 +277,12 @@ class Parser(input: java.io.InputStream, filename: String) {
   // or ' ' (clip, the default)
   private var chomping: Int = ' '
   private def tpos = Position(filename, tline, tcol, tidx)
+  // start a new token at the current char
+  private def markToken(): Unit = {
+    tline = cline
+    tcol = ccol
+    tidx = cidx
+  }
 
   case class Ctx(pos: Position) extends yamlesque.Ctx
 
@@ -407,11 +415,10 @@ class Parser(input: java.io.InputStream, filename: String) {
       throw new ParseException(tab, "Tabs are not allowed for indentation")
     }
     tokenBuffer.clear()
-    tline = cline
-    tcol = ccol
-    tidx = cidx
+    markToken()
     char match {
       case -1 => tok = Eof
+      case '[' | '{' => tok = Flow
       case '-' | '.' if atMarker =>
         tok = if (char == '-') DocStart else DocEnd
         readChar()
@@ -643,20 +650,234 @@ class Parser(input: java.io.InputStream, filename: String) {
     r
   }
 
+  // an unquoted scalar, typed as null, boolean, number or string
+  private def visitPlain[T](visitor: Visitor[T], ctx: Ctx, text: String): T = {
+    if (Parser.isNullLiteral(text)) visitor.visitEmpty(ctx)
+    else Parser.boolLiteral(text) match {
+      case Some(b) => visitor.visitBool(ctx, b)
+      case None =>
+        if (Parser.isNumberLiteral(text)) visitor.visitNumber(ctx, text)
+        else visitor.visitString(ctx, text)
+    }
+  }
+
+  // Flow collections, i.e. `[a, b]` and `{a: b}`. Like text blocks, these are
+  // parsed directly on chars instead of tokens. Flow collections may span
+  // multiple lines, and indentation is not significant within them.
+
+  private def flowError(message: String) = throw new ParseException(cpos, message)
+
+  // whether a byte may follow a `:` which separates a key from its value
+  private def isFlowSeparator(b: Int) = b match {
+    case ' ' | '\t' | '\n' | '\r' | ',' | '[' | ']' | '{' | '}' | -1 => true
+    case _ => false
+  }
+  private def atFlowColon = char == ':' && isFlowSeparator(peekByte(0))
+
+  // skip whitespace, line breaks and comments
+  private def skipFlowSpace(): Unit = {
+    while (true) {
+      char match {
+        case ' ' | '\t' => readChar()
+        case '\n' =>
+          readChar()
+          if (atMarker) flowError("Document markers are not allowed within flow collections")
+        case '#' => while (!(char == '\n' || char == -1)) readChar()
+        case _ => return
+      }
+    }
+  }
+
+  // Read an unquoted scalar into the token buffer. It ends at a flow indicator,
+  // a `: ` or a comment. Line breaks are folded like in block-style plain text.
+  private def readFlowPlain(): Unit = {
+    val space = new StringBuilder // whitespace since the last content, on the same line
+    var newlines = 0
+    while (true) {
+      char match {
+        case -1 | ',' | '[' | ']' | '{' | '}' => return
+        case ':' if atFlowColon => return
+        case '#' if space.nonEmpty || newlines > 0 => return
+        case ' ' | '\t' =>
+          appendCodePoint(space, char)
+          readChar()
+        case '\n' =>
+          newlines += 1
+          space.clear()
+          readChar()
+          if (atMarker) flowError("Document markers are not allowed within flow collections")
+        case other =>
+          if (newlines == 0) tokenBuffer ++= space.result()
+          else if (newlines == 1) tokenBuffer += ' '
+          else for (_ <- 1 until newlines) tokenBuffer += '\n'
+          space.clear()
+          newlines = 0
+          appendCodePoint(tokenBuffer, other)
+          readChar()
+      }
+    }
+  }
+
+  // read a quoted or plain scalar; returns its text and whether it was quoted
+  private def readFlowScalar(): (String, Boolean) = {
+    markToken() // errors within quoted text are reported at the opening quote
+    tokenBuffer.clear()
+    char match {
+      case '"' =>
+        readChar()
+        readQuotedText()
+        (tokenBuffer.result(), true)
+      case '\'' =>
+        readChar()
+        readSingleQuotedText()
+        (tokenBuffer.result(), true)
+      case _ =>
+        readFlowPlain()
+        val text = tokenBuffer.result()
+        if (text.isEmpty) flowError(s"Expected a value, found '${new String(Character.toChars(char))}'")
+        (text, false)
+    }
+  }
+
+  private def visitFlowScalar[T](visitor: Visitor[T], ctx: Ctx, text: String, quoted: Boolean): T =
+    if (quoted) visitor.visitQuotedString(ctx, text) else visitPlain(visitor, ctx, text)
+
+  private def unterminated(open: Position, close: Char) =
+    throw new ParseException(open, s"Expected '$close' to close this flow collection, but reached EOF")
+
+  // any flow value, starting at the current char
+  private def parseFlowValue[T](visitor: Visitor[T]): T = {
+    skipFlowSpace()
+    val ctx = Ctx(cpos)
+    char match {
+      case '[' => parseFlowSequence(visitor, ctx)
+      case '{' => parseFlowMapping(visitor, ctx)
+      case -1 => flowError("Expected a value, but reached EOF")
+      case _ =>
+        val (text, quoted) = readFlowScalar()
+        visitFlowScalar(visitor, ctx, text, quoted)
+    }
+  }
+
+  // the value after a `:`, which may be empty
+  private def parseFlowMappingValue[T](visitor: Visitor[T], close: Char): T = {
+    skipFlowSpace()
+    if (char == ',' || char == close) visitor.visitEmpty(Ctx(cpos))
+    else parseFlowValue(visitor)
+  }
+
+  private def parseFlowSequence[T](visitor: Visitor[T], ctx: Ctx): T = {
+    val open = cpos
+    readChar() // [
+    val av = visitor.visitArray(ctx)
+    var idx = 0
+    skipFlowSpace()
+    while (char != ']') {
+      if (char == -1) unterminated(open, ']')
+      val ictx = Ctx(cpos)
+      av.visitIndex(ictx, idx)
+      av.visitValue(ictx, parseFlowSequenceEntry(av.subVisitor(), ictx))
+      idx += 1
+      skipFlowSpace()
+      char match {
+        case ',' =>
+          readChar()
+          skipFlowSpace()
+        case ']' =>
+        case -1 => unterminated(open, ']')
+        case _ => flowError("Expected ',' or ']'")
+      }
+    }
+    readChar() // ]
+    av.visitEnd()
+  }
+
+  // an entry of a sequence, which may be a single key-value pair, e.g. `[a: 1]`
+  private def parseFlowSequenceEntry[T](visitor: Visitor[T], ctx: Ctx): T = {
+    char match {
+      case '[' | '{' =>
+        val value = parseFlowValue(visitor)
+        skipFlowSpace()
+        if (char == ':') flowError("Flow collections cannot be used as keys")
+        value
+      case ',' => flowError("Expected a value, found ','")
+      case _ =>
+        val (text, quoted) = readFlowScalar()
+        skipFlowSpace()
+        if (char == ':' && (quoted || atFlowColon)) {
+          readChar() // :
+          val ov = visitor.visitObject(ctx)
+          ov.visitKey(ctx, text)
+          val vctx = Ctx(cpos)
+          ov.visitValue(vctx, parseFlowMappingValue(ov.subVisitor(), ']'))
+          ov.visitEnd()
+        } else {
+          visitFlowScalar(visitor, ctx, text, quoted)
+        }
+    }
+  }
+
+  private def parseFlowMapping[T](visitor: Visitor[T], ctx: Ctx): T = {
+    val open = cpos
+    readChar() // {
+    val ov = visitor.visitObject(ctx)
+    skipFlowSpace()
+    while (char != '}') {
+      val kctx = Ctx(cpos)
+      char match {
+        case -1 => unterminated(open, '}')
+        case '[' | '{' => flowError("Flow collections cannot be used as keys")
+        case ',' => flowError("Expected a key, found ','")
+        case _ =>
+      }
+      val (key, quoted) = readFlowScalar()
+      ov.visitKey(kctx, key)
+      skipFlowSpace()
+      // quoted keys may be directly followed by `:`, as in JSON
+      if (char == ':' && (quoted || atFlowColon)) {
+        readChar() // :
+        skipFlowSpace()
+        val vctx = Ctx(cpos)
+        ov.visitValue(vctx, parseFlowMappingValue(ov.subVisitor(), '}'))
+      } else { // a key without value, e.g. `{a, b}`
+        ov.visitValue(kctx, ov.subVisitor().visitEmpty(kctx))
+      }
+      skipFlowSpace()
+      char match {
+        case ',' =>
+          readChar()
+          skipFlowSpace()
+        case '}' =>
+        case -1 => unterminated(open, '}')
+        case _ => flowError("Expected ',' or '}'")
+      }
+    }
+    readChar() // }
+    ov.visitEnd()
+  }
+
+  // a flow collection in block context, starting at the current token
+  private def parseFlow[T](visitor: Visitor[T]): T = {
+    val value = parseFlowValue(visitor)
+    // only a comment may follow on the same line
+    while (char == ' ' || char == '\t') readChar()
+    char match {
+      case '#' => while (!(char == '\n' || char == -1)) readChar()
+      case '\n' | -1 =>
+      case ':' => flowError("Flow collections cannot be used as keys")
+      case _ => flowError("Unexpected content after flow collection")
+    }
+    readToken() // since this function worked directly on chars, we need to pull in the next token
+    value
+  }
+
   def parseValue[T](minCol: Int, visitor: Visitor[T]): T = {
     val ctx = Ctx(tpos)
     tok match {
       case Eof | DocStart | DocEnd => visitor.visitEmpty(ctx)
       case Key => parseMap(visitor.visitObject(ctx))
-      case Text =>
-        val text = parseText(minCol)
-        if (Parser.isNullLiteral(text)) visitor.visitEmpty(ctx)
-        else Parser.boolLiteral(text) match {
-          case Some(b) => visitor.visitBool(ctx, b)
-          case None =>
-            if (Parser.isNumberLiteral(text)) visitor.visitNumber(ctx, text)
-            else visitor.visitString(ctx, text)
-        }
+      case Text => visitPlain(visitor, ctx, parseText(minCol))
+      case Flow => parseFlow(visitor)
       case QText => visitor.visitQuotedString(ctx, parseText(minCol))
       case Item => parseList(visitor.visitArray(ctx))
       case LitStyle => visitor.visitBlockStringLiteral(ctx, parseTextBlock(minCol))

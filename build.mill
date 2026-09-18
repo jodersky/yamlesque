@@ -1,11 +1,11 @@
-//| mill-version: 1.0.6
+//| mill-version: 1.1.9
 
 import mill._, scalalib._, scalajslib._, scalanativelib._, scalalib.publish._
 
-val scala3 = "3.3.6"
-val scala213 = "2.13.17"
-val scalajs = "1.20.1"
-val scalanative = "0.5.9"
+val scala3 = "3.9.0"
+val scala213 = "2.13.18"
+val scalajs = "1.22.0"
+val scalanative = "0.5.12"
 
 trait Utest extends ScalaModule with TestModule {
   def mvnDeps = Seq(mvn"com.lihaoyi::utest::0.9.1")
@@ -30,9 +30,9 @@ trait Publish extends PublishModule {
 object yamlesque extends Module {
 
   trait YamlesquesModule extends ScalaModule with Publish {
-    def scalacOptions = Seq("-feature", "-deprecation", "-release", "8")
+    def scalacOptions = Seq("-feature", "-deprecation", "-release", "17")
     def artifactName = "yamlesque"
-    def mvnDeps = Seq(mvn"com.lihaoyi::geny::1.1.0")
+    def mvnDeps = Seq(mvn"com.lihaoyi::geny::1.1.1")
     def moduleDir = super.moduleDir / os.up
   }
 
@@ -63,8 +63,8 @@ object site extends ScalaJSModule {
   def scalaJSVersion = scalajs
   def moduleDeps = Seq(yamlesque.js(scala3, scalajs))
   def mvnDeps = Seq(
-    mvn"com.lihaoyi::ujson::3.3.0",
-    mvn"org.scala-js::scalajs-dom::2.8.0"
+    mvn"com.lihaoyi::ujson::4.4.3",
+    mvn"org.scala-js::scalajs-dom::2.8.1"
   )
 }
 

@@ -182,7 +182,7 @@ object BasicTest extends TestSuite {
       read("- \tb") ==> Arr(Str("b"))
       read("a: \tb") ==> Obj("a" -> Str("b"))
       read("a: b\tc") ==> Obj("a" -> Str("b\tc"))
-      read("a: |\n  \tx\n  y\n") ==> Obj("a" -> Str("\tx\ny"))
+      read("a: |\n  \tx\n  y\n") ==> Obj("a" -> Str("\tx\ny\n"))
     }
     test("utf8") {
       read("€") ==> Str("€")
@@ -193,7 +193,7 @@ object BasicTest extends TestSuite {
         "日本" -> Str("語"),
         "😀" -> Str("😀x")
       )
-      read("- é\n- \"ü😀\"\n- |\n  ö\n  😀\n") ==> Arr(Str("é"), Str("ü😀"), Str("ö\n😀"))
+      read("- é\n- \"ü😀\"\n- |\n  ö\n  😀\n") ==> Arr(Str("é"), Str("ü😀"), Str("ö\n😀\n"))
       read("a: é\r\nb: ü\r\n") ==> Obj("a" -> Str("é"), "b" -> Str("ü"))
     }
     test("utf8 byte order mark") {
@@ -223,7 +223,7 @@ object BasicTest extends TestSuite {
       read("a: ~~") ==> Obj("a" -> Str("~~"))
       read("a: nUll") ==> Obj("a" -> Str("nUll"))
       read("a: null\n   x") ==> Obj("a" -> Str("null x"))
-      read("a: |\n  null\n") ==> Obj("a" -> Str("null"))
+      read("a: |\n  null\n") ==> Obj("a" -> Str("null\n"))
       read("null: x") ==> Obj("null" -> Str("x"))
     }
     test("text starting with block indicator") {

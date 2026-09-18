@@ -53,12 +53,12 @@ object DocumentTest extends TestSuite {
       readDocuments("--- 'a'\n---\t\"b\"") ==> Seq(Str("a"), Str("b"))
     }
     test("block text") {
-      readDocuments("--- |\n  x\n---\ny") ==> Seq(Str("x"), Str("y"))
-      readDocuments("--- |\nx\ny\n---\nz") ==> Seq(Str("x\ny"), Str("z"))
-      readDocuments("--- >\nx\ny\n...\n") ==> Seq(Str("x y"))
+      readDocuments("--- |\n  x\n---\ny") ==> Seq(Str("x\n"), Str("y"))
+      readDocuments("--- |\nx\ny\n---\nz") ==> Seq(Str("x\ny\n"), Str("z"))
+      readDocuments("--- >\nx\ny\n...\n") ==> Seq(Str("x y\n"))
       readDocuments("--- |\n---\n") ==> Seq(Str(""), Null())
-      readDocuments("--- |\nx\n----\n--- a\n") ==> Seq(Str("x\n----"), Str("a"))
-      readDocuments("a: |\n  x\n---\nb") ==> Seq(Obj("a" -> Str("x")), Str("b"))
+      readDocuments("--- |\nx\n----\n--- a\n") ==> Seq(Str("x\n----\n"), Str("a"))
+      readDocuments("a: |\n  x\n---\nb") ==> Seq(Obj("a" -> Str("x\n")), Str("b"))
     }
     test("not markers") {
       read("----") ==> Str("----")
@@ -107,7 +107,7 @@ object DocumentTest extends TestSuite {
     test("short reads") {
       val source = "a: ü😀\n---\n--- |\nx\n...\n"
       val in = new TrickleInputStream(source.getBytes("utf-8"))
-      readDocuments(in) ==> Seq(Obj("a" -> Str("ü😀")), Null(), Str("x"))
+      readDocuments(in) ==> Seq(Obj("a" -> Str("ü😀")), Null(), Str("x\n"))
     }
     test("write") {
       writeDocuments(Seq()) ==> ""

@@ -8,30 +8,30 @@ object StringTest extends TestSuite {
       read("""||
               |hello
               |world
-              |""".stripMargin) ==> Str("hello\nworld")
+              |""".stripMargin) ==> Str("hello\nworld\n")
       read(s"""||
                |hello ${" "}
                |world
-               |""".stripMargin) ==> Str("hello\nworld")
+               |""".stripMargin) ==> Str("hello\nworld\n")
       read("""||
               |hello
               | world
-              |""".stripMargin) ==> Str("hello\n world")
+              |""".stripMargin) ==> Str("hello\n world\n")
       read("""||
               |hello
               |  world
-              |""".stripMargin) ==> Str("hello\n  world")
+              |""".stripMargin) ==> Str("hello\n  world\n")
       read("""||
               |hello
               |
               |  world
-              |""".stripMargin) ==> Str("hello\n\n  world")
+              |""".stripMargin) ==> Str("hello\n\n  world\n")
       read("""||
               |
               |hello
               |
               |  world
-              |""".stripMargin) ==> Str("\nhello\n\n  world")
+              |""".stripMargin) ==> Str("\nhello\n\n  world\n")
       read(s"""||
                |
                |hello
@@ -39,37 +39,37 @@ object StringTest extends TestSuite {
                |  world
                | ${" "}
                |foo
-               |""".stripMargin) ==> Str("\nhello\n\n  world\n\nfoo")
+               |""".stripMargin) ==> Str("\nhello\n\n  world\n\nfoo\n")
     }
     test("fold") {
       read("""|>
               |hello
               |world
-              |""".stripMargin) ==> Str("hello world")
+              |""".stripMargin) ==> Str("hello world\n")
       read(s"""|>
                |hello ${" "}
                |world
-               |""".stripMargin) ==> Str("hello world")
+               |""".stripMargin) ==> Str("hello world\n")
       read("""|>
               |hello
               | world
-              |""".stripMargin) ==> Str("hello  world")
+              |""".stripMargin) ==> Str("hello  world\n")
       read("""|>
               |hello
               |  world
-              |""".stripMargin) ==> Str("hello   world")
+              |""".stripMargin) ==> Str("hello   world\n")
       read("""|>
               |hello
               |
               |  world
-              |""".stripMargin) ==> Str("hello\n  world")
+              |""".stripMargin) ==> Str("hello\n  world\n")
       read(s"""|>
                |hello
                |
                |  world
                |  ${"  "}
                |foo
-               |""".stripMargin) ==> Str("hello\n  world\nfoo")
+               |""".stripMargin) ==> Str("hello\n  world\nfoo\n")
     }
     test("empty") {
       read("""|""") ==> Str("")
@@ -91,28 +91,28 @@ object StringTest extends TestSuite {
 
       read("""|a: >
               | hello
-              |""".stripMargin) ==> Obj("a" -> Str("hello"))
+              |""".stripMargin) ==> Obj("a" -> Str("hello\n"))
       read("""|a: >
               |
               | hello
-              |""".stripMargin) ==> Obj("a" -> Str("hello"))
+              |""".stripMargin) ==> Obj("a" -> Str("hello\n"))
       read("""|a: >
               |
               |  hello
               |  world
               |   foo
               |  bar
-              |""".stripMargin) ==> Obj("a" -> Str("hello world  foo bar"))
+              |""".stripMargin) ==> Obj("a" -> Str("hello world  foo bar\n"))
       read("""|a: |
               | hello
-              |""".stripMargin) ==> Obj("a" -> Str("hello"))
+              |""".stripMargin) ==> Obj("a" -> Str("hello\n"))
       read("""|a: |
               |
               |  hello
               |  world
               |   foo
               |  bar
-              |""".stripMargin) ==> Obj("a" -> Str("\nhello\nworld\n foo\nbar"))
+              |""".stripMargin) ==> Obj("a" -> Str("\nhello\nworld\n foo\nbar\n"))
     }
     test("invalid map") {
       val e = assertThrows[ParseException] {
@@ -129,10 +129,10 @@ object StringTest extends TestSuite {
       read("- |\n- |") ==> Arr(Str(""), Str(""))
       read("""|- >
               | hello
-              |""".stripMargin) ==> Arr(Str("hello"))
+              |""".stripMargin) ==> Arr(Str("hello\n"))
       read("""|- |
               | hello
-              |""".stripMargin) ==> Arr(Str("hello"))
+              |""".stripMargin) ==> Arr(Str("hello\n"))
     }
     test("invalid list") {
       val e = assertThrows[ParseException] {
@@ -141,6 +141,55 @@ object StringTest extends TestSuite {
                 |""".stripMargin)
       }
       assert(e.message.contains("Expected list item. Found: text"))
+    }
+    test("chomping clip") {
+      read("|\n  a\n") ==> Str("a\n")
+      read("|\n  a\n\n\n") ==> Str("a\n")
+      read("|\n  a") ==> Str("a") // no final line break to keep
+      read(">\n  a\n  b\n\n") ==> Str("a b\n")
+      read("|\n\n\n") ==> Str("")
+      read("a: |\n  x\n\nb: y") ==> Obj("a" -> Str("x\n"), "b" -> Str("y"))
+    }
+    test("chomping strip") {
+      read("|-\n  a\n") ==> Str("a")
+      read("|-\n  a\n  b\n\n\n") ==> Str("a\nb")
+      read(">-\n  a\n  b\n\n") ==> Str("a b")
+      read("|-\n  a\n\n  b\n") ==> Str("a\n\nb") // only trailing line breaks are stripped
+      read("|-\n") ==> Str("")
+      read("|-") ==> Str("")
+      read("a: |-\n  x\n\nb: y") ==> Obj("a" -> Str("x"), "b" -> Str("y"))
+      read("- >-\n  x\n- |-\n  y\n") ==> Arr(Str("x"), Str("y"))
+    }
+    test("chomping keep") {
+      read("|+\n  a\n") ==> Str("a\n")
+      read("|+\n  a\n\n\n") ==> Str("a\n\n\n")
+      read("|+\n  a") ==> Str("a")
+      read(">+\n  a\n  b\n\n") ==> Str("a b\n\n")
+      read("|+\n  a\n  \n  \n") ==> Str("a\n\n\n") // whitespace-only lines count too
+      read("|+\n\n\n") ==> Str("\n\n")
+      read("a: |+\n  x\n\nb: y") ==> Obj("a" -> Str("x\n\n"), "b" -> Str("y"))
+      read("a: |+\n  x\n\n# comment\n\nb: y") ==> Obj("a" -> Str("x\n\n"), "b" -> Str("y"))
+    }
+    test("chomping crlf") {
+      read("|-\r\n  a\r\n\r\n") ==> Str("a")
+      read("|+\r\n  a\r\n\r\n") ==> Str("a\n\n")
+      read("|\r\n  a\r\n\r\n") ==> Str("a\n")
+    }
+    test("chomping with comment") {
+      read("|- # comment\n  a\n") ==> Str("a")
+      read(">+ # comment\n  a\n\n") ==> Str("a\n\n")
+    }
+    test("chomping across documents") {
+      readDocuments("--- |+\n  a\n\n---\nb") ==> Seq(Str("a\n\n"), Str("b"))
+      readDocuments("--- |+\na\n\n---\nb") ==> Seq(Str("a\n\n"), Str("b"))
+      readDocuments("--- |-\na\n...\n") ==> Seq(Str("a"))
+    }
+    test("chomping-like text") {
+      read("|-x") ==> Str("|-x")
+      read("|+x") ==> Str("|+x")
+      read(">-- a") ==> Str(">-- a")
+      read("a: |-x") ==> Obj("a" -> Str("|-x"))
+      read("|++") ==> Str("|++")
     }
     test("nested") {
       read("|\n|") ==> Str("|")
@@ -157,7 +206,7 @@ object StringTest extends TestSuite {
       read(""""# not a comment"""") ==> Str("""# not a comment""")
       read("""|>
               |"# not a comment"
-              |""".stripMargin) ==> Str(""""# not a comment"""")
+              |""".stripMargin) ==> Str("\"# not a comment\"\n")
       read(""""> not a block"""") ==> Str("""> not a block""")
     }
     test("single quoted") {

@@ -214,6 +214,9 @@ class Parser(input: java.io.InputStream, filename: String) {
   private var tidx = cidx
   private val tokenBuffer = new StringBuilder
   private var tok: Token = _
+  // chomping indicator of the last `|` or `>` token: '-' (strip), '+' (keep)
+  // or ' ' (clip, the default)
+  private var chomping: Int = ' '
   private def tpos = Position(filename, tline, tcol, tidx)
 
   case class Ctx(pos: Position) extends yamlesque.Ctx
@@ -361,6 +364,14 @@ class Parser(input: java.io.InputStream, filename: String) {
       case '|' | '>' =>
         val c = char
         readChar()
+        chomping = ' '
+        if (char == '-' || char == '+') {
+          val next = peekByte(0)
+          if (next == ' ' || next == '\n' || next == '\r' || next == -1) {
+            chomping = char
+            readChar()
+          }
+        }
         char match {
           case ' ' | '\n' | -1 =>
             if (c == '|') tok = LitStyle else tok = FoldStyle
@@ -507,8 +518,9 @@ class Parser(input: java.io.InputStream, filename: String) {
     }
     readChar()
 
-    var lineCount = 0
+    var lineCount = 0 // line breaks since the last content char
     var spaceCount = 0
+    var hasContent = false
 
     // determine starting column
     while (char == ' ' || char == '\n') {
@@ -521,6 +533,7 @@ class Parser(input: java.io.InputStream, filename: String) {
     tokenBuffer.clear()
     if (minCol <= ccol && char != -1 && !atMarker) {
       val scol = ccol
+      hasContent = true
 
       if (literal) {
         for (_ <- 0 until lineCount) tokenBuffer += '\n'
@@ -559,6 +572,15 @@ class Parser(input: java.io.InputStream, filename: String) {
         }
       }
     }
+    // at this point, lineCount is the number of trailing line breaks
+    chomping match {
+      case '-' => // strip: no trailing line breaks
+      case '+' => // keep: all trailing line breaks
+        for (_ <- 0 until lineCount) tokenBuffer += '\n'
+      case _ => // clip: only the final line break of the content
+        if (hasContent && lineCount > 0) tokenBuffer += '\n'
+    }
+
     val r = tokenBuffer.result()
     readToken() // since this function worked directly on chars, we need to pull in the next token
     r

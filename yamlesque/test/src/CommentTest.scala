@@ -51,13 +51,13 @@ object CommentTest extends TestSuite {
     test("block text") {
       read("""|> # yo
               |hello
-              |""".stripMargin) ==> Str("hello")
+              |""".stripMargin) ==> Str("hello\n")
       read("""|# test
               |>
               |# yo
               |hello
               |# more
-              |""".stripMargin) ==> Str("# yo hello # more")
+              |""".stripMargin) ==> Str("# yo hello # more\n")
     }
   }
 }

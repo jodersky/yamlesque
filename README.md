@@ -139,7 +139,8 @@ different types. Just the parser won't do this for you.
 Available features:
 
 - strings: plain (i.e. scalars), single and double quoted
-- block-style strings (| and >)
+- block-style strings (| and >), including chomping modifiers (e.g. the '-' in
+  '>-')
 - lists and maps
 - comments
 - multiple documents (i.e. ---)
@@ -148,7 +149,7 @@ Unsupported features with no planned implementation:
 
 - anchors and references
 - flow-styles (aka inline JSON)
-- chomping modifiers (e.g. the '-' in '>-')
+- explicit indentation indicators for block-style strings (e.g. the '2' in '|2')
 - tags
 
 Pull requests with additional feature implementations are always welcome!

@@ -10,6 +10,8 @@ object PositionTest extends TestSuite {
     def visitArray(ctx: Ctx) = this
     def visitEmpty(ctx: Ctx) = out += "" -> ctx.pos
     def visitString(ctx: Ctx, text: CharSequence) = out += text.toString -> ctx.pos
+    def visitBool(ctx: Ctx, value: Boolean) = out += value.toString -> ctx.pos
+    def visitNumber(ctx: Ctx, text: CharSequence) = out += text.toString -> ctx.pos
     def visitQuotedString(ctx: Ctx, text: CharSequence) = out += s""""$text"""" -> ctx.pos
     def visitBlockStringLiteral(ctx: Ctx, text: CharSequence) = ()
     def visitBlockStringFolded(ctx: Ctx, text: CharSequence) = ()

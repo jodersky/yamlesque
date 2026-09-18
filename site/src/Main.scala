@@ -34,6 +34,8 @@ def ytoj(y: yamlesque.Value): ujson.Value = y match {
     }
     j
   case yamlesque.Str(x)  => ujson.Str(x)
+  case yamlesque.Num(x)  => ujson.Num(x)
+  case yamlesque.Bool(x) => ujson.Bool(x)
   case yamlesque.Null()    => ujson.Null
 }
 

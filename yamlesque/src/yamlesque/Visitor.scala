@@ -9,6 +9,12 @@ trait Visitor[+T]{
   def visitArray(ctx: Ctx): ArrayVisitor[T]
   def visitEmpty(ctx: Ctx): T
 
+  def visitBool(ctx: Ctx, value: Boolean): T
+  /** A number literal, as written in the document (e.g. `42`, `-1.5e3`,
+    * `0x1F`, `.inf`). Use [[Parser.parseNumber]] to convert it to a Double.
+    */
+  def visitNumber(ctx: Ctx, text: CharSequence): T
+
   def visitString(ctx: Ctx, text: CharSequence): T
   def visitQuotedString(ctx: Ctx, text: CharSequence): T
   def visitBlockStringLiteral(ctx: Ctx, text: CharSequence): T
@@ -33,6 +39,9 @@ class ValueBuilder() extends Visitor[Value] {
   def visitObject(ctx: Ctx): ObjectVisitor[Value] = new ObjectBuilder()
   def visitArray(ctx: Ctx): ArrayVisitor[Value] = new ArrayBuilder()
   def visitEmpty(ctx: Ctx): Value = Null()
+
+  def visitBool(ctx: Ctx, value: Boolean): Value = Bool(value)
+  def visitNumber(ctx: Ctx, text: CharSequence): Value = Num(Parser.parseNumber(text))
 
   def visitString(ctx: Ctx, text: CharSequence): Value = Str(text.toString())
 
@@ -156,6 +165,9 @@ class CompactPrinter(out0: java.io.OutputStream) extends Visitor[Unit] with Arra
 
   def visitEmpty(ctx: Ctx): Unit = ()
 
+  def visitBool(ctx: Ctx, value: Boolean): Unit = out.print(value)
+  def visitNumber(ctx: Ctx, text: CharSequence): Unit = out.print(text)
+
   def visitBlockStringFolded(ctx: Ctx, text: CharSequence): Unit = visitString(ctx, text)
   def visitBlockStringLiteral(ctx: Ctx,text: CharSequence): Unit = visitString(ctx, text)
 
@@ -164,11 +176,13 @@ class CompactPrinter(out0: java.io.OutputStream) extends Visitor[Unit] with Arra
   // TODO: handle multi-line text
   def visitString(ctx: Ctx, text: CharSequence): Unit = {
     val s = text.toString
-    // quote strings which would otherwise be read back as null, as quoted text
-    // or as a document marker
+    // quote strings which would otherwise be read back as null, a boolean, a
+    // number, quoted text or a document marker
     val marker = (s.startsWith("---") || s.startsWith("...")) &&
       (s.length == 3 || " \t\r\n".indexOf(s(3)) >= 0)
-    if (s.isEmpty || Parser.isNullLiteral(s) || s(0) == '\'' || s(0) == '"' || marker) {
+    val typed = Parser.isNullLiteral(s) || Parser.boolLiteral(s).isDefined ||
+      Parser.isNumberLiteral(s)
+    if (s.isEmpty || typed || s(0) == '\'' || s(0) == '"' || marker) {
       out.print('\'')
       out.print(s.replace("'", "''"))
       out.print('\'')

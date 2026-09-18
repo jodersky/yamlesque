@@ -69,6 +69,63 @@ object Parser {
     case _ => false
   }
 
+  /** Plain scalars which are interpreted as booleans. */
+  private[yamlesque] def boolLiteral(text: String): Option[Boolean] = text match {
+    case "true" | "True" | "TRUE" => Some(true)
+    case "false" | "False" | "FALSE" => Some(false)
+    case _ => None
+  }
+
+  // numbers of the YAML 1.2 core schema
+  private val DecimalNumber = java.util.regex.Pattern.compile(
+    "[-+]?(\\.[0-9]+|[0-9]+(\\.[0-9]*)?)([eE][-+]?[0-9]+)?"
+  )
+  private val OctalNumber = java.util.regex.Pattern.compile("0o[0-7]+")
+  private val HexNumber = java.util.regex.Pattern.compile("0x[0-9a-fA-F]+")
+
+  /** Plain scalars which are interpreted as numbers. */
+  private[yamlesque] def isNumberLiteral(text: String): Boolean = text match {
+    case ".inf" | ".Inf" | ".INF" | "+.inf" | "+.Inf" | "+.INF" |
+         "-.inf" | "-.Inf" | "-.INF" | ".nan" | ".NaN" | ".NAN" => true
+    case _ =>
+      text.nonEmpty && {
+        val c = text.charAt(0)
+        (c >= '0' && c <= '9') || c == '-' || c == '+' || c == '.'
+      } && (
+        DecimalNumber.matcher(text).matches() ||
+        OctalNumber.matcher(text).matches() ||
+        HexNumber.matcher(text).matches()
+      )
+  }
+
+  /** Whether a number literal is a decimal integer, i.e. can be read exactly
+    * without going through a Double.
+    */
+  def isIntegerLiteral(text: CharSequence): Boolean = {
+    val s = text.toString
+    val start = if (s.startsWith("-") || s.startsWith("+")) 1 else 0
+    s.length > start && s.substring(start).forall(c => c >= '0' && c <= '9')
+  }
+
+  /** Convert a number literal, as passed to [[Visitor.visitNumber]], to a Double. */
+  def parseNumber(text: CharSequence): Double = text.toString match {
+    case ".inf" | ".Inf" | ".INF" | "+.inf" | "+.Inf" | "+.INF" => Double.PositiveInfinity
+    case "-.inf" | "-.Inf" | "-.INF" => Double.NegativeInfinity
+    case ".nan" | ".NaN" | ".NAN" => Double.NaN
+    case s if s.startsWith("0x") => BigInt(s.substring(2), 16).toDouble
+    case s if s.startsWith("0o") => BigInt(s.substring(2), 8).toDouble
+    case s => java.lang.Double.parseDouble(s)
+  }
+
+  /** Format a Double as a number literal which reads back as the same value. */
+  def formatNumber(d: Double): String = {
+    if (d.isNaN) ".nan"
+    else if (d == Double.PositiveInfinity) ".inf"
+    else if (d == Double.NegativeInfinity) "-.inf"
+    else if (d == math.rint(d) && math.abs(d) < 1e15) d.toLong.toString
+    else d.toString
+  }
+
   private[yamlesque] def appendCodePoint(sb: StringBuilder, cp: Int): Unit = {
     if (cp < 0x10000) {
       sb += cp.toChar
@@ -594,7 +651,12 @@ class Parser(input: java.io.InputStream, filename: String) {
       case Text =>
         val text = parseText(minCol)
         if (Parser.isNullLiteral(text)) visitor.visitEmpty(ctx)
-        else visitor.visitString(ctx, text)
+        else Parser.boolLiteral(text) match {
+          case Some(b) => visitor.visitBool(ctx, b)
+          case None =>
+            if (Parser.isNumberLiteral(text)) visitor.visitNumber(ctx, text)
+            else visitor.visitString(ctx, text)
+        }
       case QText => visitor.visitQuotedString(ctx, parseText(minCol))
       case Item => parseList(visitor.visitArray(ctx))
       case LitStyle => visitor.visitBlockStringLiteral(ctx, parseTextBlock(minCol))

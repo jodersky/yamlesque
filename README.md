@@ -67,11 +67,11 @@ val config = y.Obj(
   "interfaces" -> y.Arr(
     y.Obj(
       "address" -> y.Str("0.0.0.0"),
-      "port" -> y.Str("80")
+      "port" -> y.Num(80)
     ),
     y.Obj(
       "address" -> y.Str("0.0.0.0"),
-      "port" -> y.Str("443")
+      "port" -> y.Num(443)
     )
   )
 )
@@ -126,15 +126,17 @@ name: second
 1.2](http://yaml.org/spec/1.2/spec.html), however support should be
 sufficient for most regular documents.**
 
-A major point of divergence between official YAML and this library is the way in
-which typing of strings is done. Whereas official YAML implicitly casts strings
-to narrower types when possible (for example the string "2" is treated as the
-number 2), this library always treats strings as text (except nulls). This
-approach leads to a more uniform parsing system which avoids many subtle bugs,
-including the infamous [Norway
-Problem](https://hitchdev.com/strictyaml/why/implicit-typing-removed/). In your
-application of course, you are still free to attempt to read strings as
-different types. Just the parser won't do this for you.
+Unquoted (plain) scalars are typed according to the YAML 1.2 core schema:
+
+- null: `null`, `~`, and empty values
+- booleans: only `true`, `false`. Unlike YAML 1.1, values
+  such as `yes`, `no`, `on` or `off` stay strings, which avoids the infamous
+  [Norway Problem](https://hitchdev.com/strictyaml/why/implicit-typing-removed/)
+- numbers: integers and floats (e.g. `42`, `-1.5`, `1e3`, `.5`), hexadecimal
+  (`0x1F`), octal (`0o17`), `.inf`, `-.inf` and `.nan`
+
+Everything else, as well as quoted and block-style strings, is text. Quote a
+value (e.g. `"42"` or `'true'`) to keep it a string.
 
 Available features:
 

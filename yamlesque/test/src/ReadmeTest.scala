@@ -32,15 +32,18 @@ object ReadmeTest extends TestSuite {
         "interfaces" -> Arr(
           Obj(
             "address" -> Str("0.0.0.0"),
-            "port" -> Str("80")
+            "port" -> Num(80)
           ),
           Obj(
             "address" -> Str("0.0.0.0"),
-            "port" -> Str("443")
+            "port" -> Num(443)
           )
         )
       )
       println(config.render())
+
+      read(config.render()) ==> config
+      assert(config.render().contains("port: 80"))
     }
   }
 

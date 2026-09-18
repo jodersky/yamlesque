@@ -54,6 +54,37 @@ sealed trait Value extends geny.Writable {
     case _ => None
   }
 
+  /**
+    * Returns the `Double` value of this [[Value]], fails if it is not
+    * a [[yamlesque.Num]]
+    */
+  def num = this match{
+    case Num(value) => value
+    case _ => throw Value.InvalidData(this, "Expected yamlesque.Num")
+  }
+  /**
+    * Returns an Optional `Double` value of this [[Value]] in case this [[Value]] is a 'Num'.
+    */
+  def numOpt = this match{
+    case Num(value) => Some(value)
+    case _ => None
+  }
+  /**
+    * Returns the `Boolean` value of this [[Value]], fails if it is not
+    * a [[yamlesque.Bool]]
+    */
+  def bool = this match{
+    case Bool(value) => value
+    case _ => throw Value.InvalidData(this, "Expected yamlesque.Bool")
+  }
+  /**
+    * Returns an Optional `Boolean` value of this [[Value]] in case this [[Value]] is a 'Bool'.
+    */
+  def boolOpt = this match{
+    case Bool(value) => Some(value)
+    case _ => None
+  }
+
   def transform[T](f: Visitor[T]): T = Value.transform(this, f)
 
   def writeBytesTo(out: java.io.OutputStream): Unit = {
@@ -79,6 +110,8 @@ object Value {
     value match {
       case Null() => f.visitEmpty(ctx)
       case Str(s) => f.visitString(ctx, s)
+      case Num(d) => f.visitNumber(ctx, Parser.formatNumber(d))
+      case Bool(b) => f.visitBool(ctx, b)
       case Arr(items) =>
         val arrVisitor = f.visitArray(ctx)
         for ((item, idx) <- items.zipWithIndex) {
@@ -149,4 +182,6 @@ object Arr{
   }
 }
 case class Str(value: String) extends Value
+case class Num(value: Double) extends Value
+case class Bool(value: Boolean) extends Value
 case class Null() extends Value

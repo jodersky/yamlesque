@@ -109,6 +109,23 @@ class Parser(input: java.io.InputStream, filename: String) {
     byteIdx -= 1
   }
 
+  // Look at the n-th next unread byte (0-based) without consuming it. n must be
+  // smaller than the buffer size.
+  private def peekByte(n: Int): Int = {
+    if (bytesPos + n >= bytesLen) {
+      // move remaining bytes to the start of the buffer and fill up the rest
+      System.arraycopy(bytes, bytesPos, bytes, 0, bytesLen - bytesPos)
+      bytesLen -= bytesPos
+      bytesPos = 0
+      var eof = false
+      while (bytesLen <= n && !eof) {
+        val read = input.read(bytes, bytesLen, bytes.length - bytesLen)
+        if (read < 0) eof = true else bytesLen += read
+      }
+    }
+    if (bytesPos + n < bytesLen) bytes(bytesPos + n) & 0xff else -1
+  }
+
   // Decode the next UTF-8 code point. Malformed sequences yield U+FFFD.
   private def readCodePoint(): Int = {
     val b0 = readByte()
@@ -167,6 +184,16 @@ class Parser(input: java.io.InputStream, filename: String) {
   }
   private def cpos = Position(filename, cline, ccol, cidx)
 
+  // whether the current char starts a document marker, i.e. `---` or `...` at
+  // the start of a line, followed by whitespace or the end of the line
+  private def atMarker: Boolean = {
+    ccol == 1 && (char == '-' || char == '.') &&
+      peekByte(0) == char && peekByte(1) == char && {
+        val next = peekByte(2)
+        next == ' ' || next == '\t' || next == '\n' || next == '\r' || next == -1
+      }
+  }
+
   private sealed trait Token
   private case object Eof extends Token { override def toString = "EOF" }
   private case object Text extends Token { override def toString = "text" }
@@ -175,6 +202,11 @@ class Parser(input: java.io.InputStream, filename: String) {
   private case object Item extends Token { override def toString = "list item" }
   private case object FoldStyle extends Token { override def toString = ">" }
   private case object LitStyle extends Token { override def toString = "|" }
+  private case object DocStart extends Token { override def toString = "---" }
+  private case object DocEnd extends Token { override def toString = "..." }
+
+  // whether the current token ends the current document
+  private def atDocEnd = tok == Eof || tok == DocStart || tok == DocEnd
 
   // token state
   private var tline = cline
@@ -320,6 +352,11 @@ class Parser(input: java.io.InputStream, filename: String) {
     tidx = cidx
     char match {
       case -1 => tok = Eof
+      case '-' | '.' if atMarker =>
+        tok = if (char == '-') DocStart else DocEnd
+        readChar()
+        readChar()
+        readChar()
       case '-' => readItem()
       case '|' | '>' =>
         val c = char
@@ -367,7 +404,7 @@ class Parser(input: java.io.InputStream, filename: String) {
 
   private def parseMap[T](visitor: ObjectVisitor[T]): T = {
     val scol = tcol
-    while (tcol == scol && tok != Eof) {
+    while (tcol == scol && !atDocEnd) {
       val p = tpos
       val key = parseKey()
       visitor.visitKey(Ctx(p), key)
@@ -384,7 +421,7 @@ class Parser(input: java.io.InputStream, filename: String) {
         visitor.visitValue(ctx, value)
       }
     }
-    if (scol < tcol && tok != Eof) tokenError("Entries within the same map must start at the same column.")
+    if (scol < tcol && !atDocEnd) tokenError("Entries within the same map must start at the same column.")
     visitor.visitEnd()
   }
 
@@ -393,7 +430,7 @@ class Parser(input: java.io.InputStream, filename: String) {
   private def parseList[T](visitor: ArrayVisitor[T], inMap: Boolean = false): T = {
     val scol = tcol
     var idx = 0
-    while (tcol == scol && tok != Eof && !(inMap && tok != Item)) {
+    while (tcol == scol && !atDocEnd && !(inMap && tok != Item)) {
       val ctx = Ctx(tpos)
       visitor.visitIndex(ctx, idx)
       tok match {
@@ -411,7 +448,7 @@ class Parser(input: java.io.InputStream, filename: String) {
       }
       idx += 1
     }
-    if (scol < tcol && tok != Eof) tokenError("Items within the same list must start at the same column.")
+    if (scol < tcol && !atDocEnd) tokenError("Items within the same list must start at the same column.")
     visitor.visitEnd()
   }
 
@@ -427,7 +464,7 @@ class Parser(input: java.io.InputStream, filename: String) {
     var previousLine = tline
     data ++= tokenBuffer.result()
     readToken()
-    while (minCol <= tcol && tok != Eof) {
+    while (minCol <= tcol && !atDocEnd) {
       if (tok != Text && tok != QText) tokenExpectedError(Text)
 
       if (tline - previousLine > 1) {
@@ -482,7 +519,7 @@ class Parser(input: java.io.InputStream, filename: String) {
     }
 
     tokenBuffer.clear()
-    if (minCol <= ccol && char != -1) {
+    if (minCol <= ccol && char != -1 && !atMarker) {
       val scol = ccol
 
       if (literal) {
@@ -497,7 +534,7 @@ class Parser(input: java.io.InputStream, filename: String) {
         readChar()
       }
 
-      while (scol <= ccol && char != -1) {
+      while (scol <= ccol && char != -1 && !atMarker) {
         while (char == ' ' || char == '\n') {
           if (char == '\n') {
             lineCount += 1
@@ -506,7 +543,7 @@ class Parser(input: java.io.InputStream, filename: String) {
           if (char == ' ' && scol <= ccol) spaceCount +=1
           readChar()
         }
-        if (scol <= ccol && char != -1) {
+        if (scol <= ccol && char != -1 && !atMarker) {
           if (literal && lineCount > 0) {
             for (_ <- 0 until lineCount) tokenBuffer += '\n'
           } else if (lineCount == 1) {
@@ -530,7 +567,7 @@ class Parser(input: java.io.InputStream, filename: String) {
   def parseValue[T](minCol: Int, visitor: Visitor[T]): T = {
     val ctx = Ctx(tpos)
     tok match {
-      case Eof => visitor.visitEmpty(ctx)
+      case Eof | DocStart | DocEnd => visitor.visitEmpty(ctx)
       case Key => parseMap(visitor.visitObject(ctx))
       case Text =>
         val text = parseText(minCol)
@@ -541,5 +578,37 @@ class Parser(input: java.io.InputStream, filename: String) {
       case LitStyle => visitor.visitBlockStringLiteral(ctx, parseTextBlock(minCol))
       case FoldStyle => visitor.visitBlockStringFolded(ctx, parseTextBlock(minCol))
     }
+  }
+
+  /** Whether another document follows in the input. */
+  def hasNextDocument: Boolean = {
+    while (tok == DocEnd) readToken() // `...` without a following document
+    tok != Eof
+  }
+
+  /** Parse the next document of the input.
+    *
+    * A document may be preceded by `---`, and must be followed by `---`,
+    * `...` or the end of the input.
+    */
+  def parseDocument[T](visitor: Visitor[T]): T = {
+    while (tok == DocEnd) readToken()
+    if (tok == DocStart) readToken()
+    val value = parseValue(0, visitor)
+    tok match {
+      case Eof | DocStart =>
+      case DocEnd => readToken()
+      case other => tokenError(s"Expected end of document. Found: $other")
+    }
+    value
+  }
+
+  /** Parse an input which must contain at most one document. */
+  def parseSingleDocument[T](visitor: Visitor[T]): T = {
+    val value = parseDocument(visitor)
+    if (hasNextDocument) {
+      tokenError("Expected a single document, but found another one. Use readDocuments to read multiple documents.")
+    }
+    value
   }
 }

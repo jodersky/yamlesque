@@ -164,8 +164,11 @@ class CompactPrinter(out0: java.io.OutputStream) extends Visitor[Unit] with Arra
   // TODO: handle multi-line text
   def visitString(ctx: Ctx, text: CharSequence): Unit = {
     val s = text.toString
-    // quote strings which would otherwise be read back as null or as quoted text
-    if (s.isEmpty || Parser.isNullLiteral(s) || s(0) == '\'' || s(0) == '"') {
+    // quote strings which would otherwise be read back as null, as quoted text
+    // or as a document marker
+    val marker = (s.startsWith("---") || s.startsWith("...")) &&
+      (s.length == 3 || " \t\r\n".indexOf(s(3)) >= 0)
+    if (s.isEmpty || Parser.isNullLiteral(s) || s(0) == '\'' || s(0) == '"' || marker) {
       out.print('\'')
       out.print(s.replace("'", "''"))
       out.print('\'')

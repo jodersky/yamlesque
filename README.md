@@ -94,6 +94,32 @@ interfaces:
     port: 443
 ```
 
+### Multiple Documents
+
+`read` expects at most one document, and fails if the input contains more.
+Streams of documents separated by `---` are read and written with
+`readDocuments` and `writeDocuments`:
+
+```scala
+val docs: Seq[yamlesque.Value] = yamlesque.readDocuments(
+  """|name: first
+     |---
+     |name: second
+     |""".stripMargin
+)
+
+println(yamlesque.writeDocuments(docs))
+```
+
+will result in
+
+```yaml
+---
+name: first
+---
+name: second
+```
+
 ## Official YAML Conformance
 
 **Yamlesque does not strictly implement all features as defined in [YAML
@@ -116,9 +142,6 @@ Available features:
 - block-style strings (| and >)
 - lists and maps
 - comments
-
-Features which are currently not supported but for which support is planned:
-
 - multiple documents (i.e. ---)
 
 Unsupported features with no planned implementation:

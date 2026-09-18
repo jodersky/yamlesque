@@ -9,6 +9,7 @@ git_url="git@github.com:jodersky/yamlesque.git"
 
 ./mill site.fullLinkJS
 mkdir -p "$ghpages"
+rm -f "$ghpages"/*.js # remove stale bundles from previous builds
 cp -f site/index.html "$ghpages"
 cp -f out/site/fullLinkJS.dest/main.js "$ghpages"
 

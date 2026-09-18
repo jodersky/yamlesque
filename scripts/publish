@@ -5,4 +5,6 @@ export MILL_SONATYPE_USERNAME="CiC1giTN"
 MILL_SONATYPE_PASSWORD="$(pass infra/ci-sonatype | head -n 1)"
 export MILL_SONATYPE_PASSWORD
 
-./mill mill.javalib.SonatypeCentralPublishModule/
+./mill mill.javalib.SonatypeCentralPublishModule/ \
+    --useGpgCli=true \
+    --gpgArgs="--batch,--yes,--armor,--detach-sign"

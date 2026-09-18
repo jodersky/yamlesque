@@ -22,6 +22,26 @@ object PrintTest extends TestSuite {
 
       read(value.render()) ==> value
     }
+    test("reprint null-like strings") {
+      import yamlesque._
+      val value = Obj(
+        "a" -> Str("null"),
+        "b" -> Str(""),
+        "c" -> Str("~"),
+        "d" -> Null(),
+        "e" -> Arr(Str("NULL"), Null())
+      )
+      read(value.render()) ==> value
+    }
+    test("utf8") {
+      import yamlesque._
+      val value = Obj("ключ" -> Str("ü😀日本"))
+      val bytes = new java.io.ByteArrayOutputStream
+      value.writeBytesTo(bytes)
+      new String(bytes.toByteArray, "utf-8") ==> "ключ: ü😀日本"
+      value.render() ==> "ключ: ü😀日本"
+      read(value.render()) ==> value
+    }
   }
 
 }

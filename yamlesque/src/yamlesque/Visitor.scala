@@ -2,7 +2,6 @@ package yamlesque
 
 trait Ctx {
   def pos: Position
-  def line: String
 }
 
 trait Visitor[+T]{
@@ -108,7 +107,9 @@ class ArrayBuilder() extends ArrayVisitor[Value] {
 
 class CompactPrinter(out0: java.io.OutputStream) extends Visitor[Unit] with ArrayVisitor[Unit] with ObjectVisitor[Unit] {
   val Indent = 2
-  val out = new java.io.PrintStream(out0)
+  val out = new java.io.PrintStream(out0, false, "utf-8")
+
+  def flush(): Unit = out.flush()
 
   private val cols = collection.mutable.Stack.empty[Int]
   private def col = cols.head
@@ -161,6 +162,16 @@ class CompactPrinter(out0: java.io.OutputStream) extends Visitor[Unit] with Arra
   def visitQuotedString(ctx: Ctx,text: CharSequence): Unit = visitString(ctx, text)
 
   // TODO: handle multi-line text
-  def visitString(ctx: Ctx, text: CharSequence): Unit = out.print(text)
+  def visitString(ctx: Ctx, text: CharSequence): Unit = {
+    val s = text.toString
+    // quote strings which would otherwise be read back as null
+    if (s.isEmpty || Parser.isNullLiteral(s)) {
+      out.print('"')
+      out.print(s)
+      out.print('"')
+    } else {
+      out.print(s)
+    }
+  }
 
 }

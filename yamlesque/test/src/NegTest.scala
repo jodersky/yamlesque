@@ -48,6 +48,47 @@ object NegTest extends TestSuite {
                 |""".stripMargin)
       }
     }
+    test("list after map no indent, followed by text") {
+      assertThrows[ParseException] {
+        read("""|a:
+                |- x
+                |b
+                |""".stripMargin)
+      }
+    }
+    test("continuation line not indented") {
+      assertThrows[ParseException] {
+        read("""|a: x
+                |y
+                |""".stripMargin)
+      }
+      assertThrows[ParseException] {
+        read("""|- a
+                |b
+                |""".stripMargin)
+      }
+    }
+    test("continuation line is a key") {
+      assertThrows[ParseException] {
+        read("""|a: x
+                |  b: y
+                |""".stripMargin)
+      }
+    }
+    def tabError(source: String, line: Int, col: Int) = {
+      val ex = assertThrows[ParseException](read(source))
+      ex.message ==> "Tabs are not allowed for indentation"
+      (ex.position.line, ex.position.col) ==> (line, col)
+    }
+    test("tab indentation") {
+      tabError("\ta: b", 1, 1)
+      tabError("a:\n\tb: c", 2, 1)
+      tabError("a:\n  \tb: c", 2, 3)
+      tabError("a:\n\t  b: c", 2, 1)
+      tabError("- a\n\t- b", 2, 1)
+      tabError("a: x\n\ty", 2, 1)
+      tabError("a: |\n  x\n\tb: c", 3, 1)
+    }
     // test("verbatim end") {
     //   assertThrows[ParseException] {
     //     read("""|a: |

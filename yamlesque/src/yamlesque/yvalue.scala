@@ -59,6 +59,7 @@ sealed trait Value extends geny.Writable {
   def writeBytesTo(out: java.io.OutputStream): Unit = {
     val renderer = new CompactPrinter(out)
     transform(renderer)
+    renderer.flush()
   }
 
   def render(codec: String = "utf-8"): String = {
@@ -73,8 +74,7 @@ object Value {
 
   def transform[T](value: Value, f: Visitor[T]): T = {
     val ctx = new Ctx {
-      val pos = Position("", 0, 0)
-      val line = ""
+      val pos = Position("", 0, 0, -1)
     }
     value match {
       case Null() => f.visitEmpty(ctx)

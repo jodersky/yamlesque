@@ -11,6 +11,9 @@ def update(str: String): Unit = {
     val value = yamlesque.read(str)
     text.value = ujson.write(ytoj(value), 2)
   } catch {
+    case ex: yamlesque.ParseException =>
+      text.classList.add("error")
+      text.value = ex.pretty(str)
     case ex: Throwable =>
       text.classList.add("error")
       text.value = ex.getMessage

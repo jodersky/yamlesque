@@ -99,6 +99,43 @@ object PositionTest extends TestSuite {
            | b:
            | ^""".stripMargin
     }
+    test("end of file") {
+      def eof(source: String) = {
+        val List((_, pos)) = record(source): @unchecked
+        (pos.line, pos.col, pos.index)
+      }
+      eof("") ==> (1, 1, 0)
+      eof("\n") ==> (2, 1, 1)
+      eof("# c\n") ==> (2, 1, 4)
+      eof("\n\n") ==> (3, 1, 2)
+    }
+    test("end of file error") {
+      val ex = error("{a:\n")
+      (ex.position.line, ex.position.col, ex.position.index) ==> (2, 1, 4)
+      ex.message ==> "Expected a value, but reached EOF"
+    }
+    test("empty values") {
+      val positions = record("a:\nb: \nc:\n  d: 1\ne:\n- \n- x\n-\n").map {
+        case (text, p) => (text, p.line, p.col)
+      }
+      positions ==> List(
+        ("a", 1, 1),
+        ("", 1, 3), // just after the colon
+        ("b", 2, 1),
+        ("", 2, 3),
+        ("c", 3, 1),
+        ("d", 4, 3),
+        ("1", 4, 6),
+        ("e", 5, 1),
+        ("", 6, 2), // just after the dash
+        ("x", 7, 3),
+        ("", 8, 2)
+      )
+    }
+    test("empty value at end of file") {
+      val positions = record("a:").map { case (text, p) => (text, p.line, p.col, p.index) }
+      positions ==> List(("a", 1, 1, 0), ("", 1, 3, 2))
+    }
     test("lineAt") {
       val bytes = "a\r\nбв\nc".getBytes("utf-8")
       Position.lineAt(bytes, 0) ==> "a"

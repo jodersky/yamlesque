@@ -216,6 +216,7 @@ class Parser(input: java.io.InputStream, filename: String) {
   private var cidx = 0 // byte offset of the current char
   private var char: Int = -1 // current unicode code point
   private var indent = true // only spaces precede the current char on its line
+  private var eof = false // whether the end of input has been reached
 
   @inline private def readChar(): Unit = {
     if (char == '\n') {
@@ -230,6 +231,11 @@ class Parser(input: java.io.InputStream, filename: String) {
     char match {
       case '\r' => readChar()
       case -1 =>
+        // the end of input is one column past the last char, like any other char
+        if (!eof) {
+          eof = true
+          ccol += 1
+        }
       case _ => ccol += 1
     }
   }
@@ -277,6 +283,9 @@ class Parser(input: java.io.InputStream, filename: String) {
   // or ' ' (clip, the default)
   private var chomping: Int = ' '
   private def tpos = Position(filename, tline, tcol, tidx)
+  // position just after the `:` of the last key token or the `-` of the last
+  // item token; this is where an empty value is located
+  private var indicatorEnd: Position = _
   // start a new token at the current char
   private def markToken(): Unit = {
     tline = cline
@@ -298,7 +307,7 @@ class Parser(input: java.io.InputStream, filename: String) {
           readChar()
           char match {
             case ' ' | '\n' | -1 =>
-              //readChar()
+              indicatorEnd = cpos
               tok = Key
               return
             case other =>
@@ -334,6 +343,7 @@ class Parser(input: java.io.InputStream, filename: String) {
         readChar()
         char match {
           case ' ' | '\n' | -1 =>
+            indicatorEnd = cpos
             tok = Item
           case other =>
             tokenBuffer += '-'
@@ -481,6 +491,7 @@ class Parser(input: java.io.InputStream, filename: String) {
     val scol = tcol
     while (tcol == scol && !atDocEnd) {
       val p = tpos
+      val emptyPos = indicatorEnd
       val key = parseKey()
       visitor.visitKey(Ctx(p), key)
 
@@ -492,8 +503,9 @@ class Parser(input: java.io.InputStream, filename: String) {
         val value = parseList(visitor.subVisitor().visitArray(ctx), inMap = true)
         visitor.visitValue(ctx, value)
       } else {
-        val value = visitor.subVisitor().visitEmpty(ctx)
-        visitor.visitValue(ctx, value)
+        val ectx = Ctx(emptyPos)
+        val value = visitor.subVisitor().visitEmpty(ectx)
+        visitor.visitValue(ectx, value)
       }
     }
     if (scol < tcol && !atDocEnd) tokenError("Entries within the same map must start at the same column.")
@@ -510,12 +522,14 @@ class Parser(input: java.io.InputStream, filename: String) {
       visitor.visitIndex(ctx, idx)
       tok match {
         case Item =>
+          val emptyPos = indicatorEnd
           readToken()
-          val ctx = Ctx(tpos)
           if (scol < tcol) {
+            val ctx = Ctx(tpos)
             val value = parseValue(scol + 1, visitor.subVisitor())
             visitor.visitValue(ctx, value)
           } else {
+            val ctx = Ctx(emptyPos)
             val value = visitor.subVisitor().visitEmpty(ctx)
             visitor.visitValue(ctx, value)
           }

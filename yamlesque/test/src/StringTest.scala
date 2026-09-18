@@ -160,5 +160,35 @@ object StringTest extends TestSuite {
               |""".stripMargin) ==> Str(""""# not a comment"""")
       read(""""> not a block"""") ==> Str("""> not a block""")
     }
+    test("single quoted") {
+      read("''") ==> Str("")
+      read("'a'") ==> Str("a")
+      read("'a b' 'a c'") ==> Str("a b a c")
+      read("'it''s'") ==> Str("it's")
+      read("''''") ==> Str("'")
+      read("'a\\nb'") ==> Str("a\\nb") // no backslash escapes
+      read("'a\\'") ==> Str("a\\")
+      read("'a\"b'") ==> Str("a\"b")
+      read("'# not a comment'") ==> Str("# not a comment")
+      read("'a: b'") ==> Str("a: b")
+      read("'- not a list'") ==> Str("- not a list")
+      read("'> not a block'") ==> Str("> not a block")
+      read("'ü😀'") ==> Str("ü😀")
+      read("'a' # comment") ==> Str("a")
+      read("it's") ==> Str("it's") // quote not at start is plain text
+    }
+    test("single quoted in map and list") {
+      read("a: 'null'\nb: '~'\nc: ''") ==> Obj(
+        "a" -> Str("null"),
+        "b" -> Str("~"),
+        "c" -> Str("")
+      )
+      read("- 'x'\n- 'y''z'") ==> Arr(Str("x"), Str("y'z"))
+    }
+    test("single quoted unterminated") {
+      val ex = assertThrows[ParseException](read("a: 'b"))
+      ex.message ==> "Expected closing ' but reached EOF"
+      (ex.position.line, ex.position.col) ==> (1, 4)
+    }
   }
 }

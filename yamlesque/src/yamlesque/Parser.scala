@@ -265,6 +265,27 @@ class Parser(input: java.io.InputStream, filename: String) {
     tok = QText
   }
 
+  // single-quoted text has no escapes, except '' for a literal '
+  private def readSingleQuotedText(): Unit = {
+    while (true) {
+      char match {
+        case '\'' =>
+          readChar()
+          if (char == '\'') {
+            tokenBuffer += '\''
+            readChar()
+          } else {
+            tok = QText
+            return
+          }
+        case -1 => tokenError("Expected closing ' but reached EOF")
+        case other =>
+          appendCodePoint(tokenBuffer, other)
+          readChar()
+      }
+    }
+  }
+
   // TODO: call this to make comments available to user code
   private def readComment() = {
     while (char == ' ') readChar()
@@ -317,6 +338,9 @@ class Parser(input: java.io.InputStream, filename: String) {
       case '"' =>
         readChar()
         readQuotedText()
+      case '\'' =>
+        readChar()
+        readSingleQuotedText()
       case other => readKeyOrText()
     }
     //println("token: " + tok + " tcol: " + tcol)

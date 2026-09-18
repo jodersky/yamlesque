@@ -112,7 +112,7 @@ different types. Just the parser won't do this for you.
 
 Available features:
 
-- strings: plain (i.e. scalars) and double quoted
+- strings: plain (i.e. scalars), single and double quoted
 - block-style strings (| and >)
 - lists and maps
 - comments
@@ -120,7 +120,6 @@ Available features:
 Features which are currently not supported but for which support is planned:
 
 - multiple documents (i.e. ---)
-- single quoted strings
 
 Unsupported features with no planned implementation:
 

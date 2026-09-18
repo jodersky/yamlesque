@@ -33,6 +33,17 @@ object PrintTest extends TestSuite {
       )
       read(value.render()) ==> value
     }
+    test("reprint quote-like strings") {
+      import yamlesque._
+      val value = Obj(
+        "a" -> Str("'x'"),
+        "b" -> Str("\"x\""),
+        "c" -> Str("'"),
+        "d" -> Str("it's"),
+        "e" -> Str("\\\"")
+      )
+      read(value.render()) ==> value
+    }
     test("utf8") {
       import yamlesque._
       val value = Obj("ключ" -> Str("ü😀日本"))

@@ -358,13 +358,9 @@ class Parser(input: java.io.InputStream, filename: String) {
     while(char != '"') {
       char match {
         case '\\' =>
+          val start = cpos
           readChar()
-          if (char == '"') {
-            tokenBuffer += '"'
-            readChar()
-          } else {
-            tokenBuffer += '\\'
-          }
+          readEscape(start)
         case -1 => tokenError("Expected closing \" but reached EOF")
         case other =>
           appendCodePoint(tokenBuffer, char)
@@ -373,6 +369,65 @@ class Parser(input: java.io.InputStream, filename: String) {
     }
     readChar()
     tok = QText
+  }
+
+  // Decode an escape sequence of the YAML 1.2 spec, section 5.7. The current
+  // char is the one following the backslash, located at `start`.
+  private def readEscape(start: Position): Unit = {
+    def literal(cp: Int): Unit = {
+      appendCodePoint(tokenBuffer, cp)
+      readChar()
+    }
+    char match {
+      case '0' => literal(0x00)
+      case 'a' => literal(0x07)
+      case 'b' => literal(0x08)
+      case 't' | '\t' => literal(0x09)
+      case 'n' => literal(0x0a)
+      case 'v' => literal(0x0b)
+      case 'f' => literal(0x0c)
+      case 'r' => literal(0x0d)
+      case 'e' => literal(0x1b)
+      case ' ' => literal(0x20)
+      case '"' => literal(0x22)
+      case '/' => literal(0x2f)
+      case '\\' => literal(0x5c)
+      case 'N' => literal(0x85)
+      case '_' => literal(0xa0)
+      case 'L' => literal(0x2028)
+      case 'P' => literal(0x2029)
+      case 'x' => readHexEscape(start, 2)
+      case 'u' => readHexEscape(start, 4)
+      case 'U' => readHexEscape(start, 8)
+      case '\n' => // line continuation
+        readChar()
+        while (char == ' ' || char == '\t') readChar()
+      case -1 => tokenError("Expected closing \" but reached EOF")
+      case other =>
+        val text = new String(Character.toChars(other))
+        throw new ParseException(start, s"Invalid escape sequence '\\$text'")
+    }
+  }
+
+  private def readHexEscape(start: Position, digits: Int): Unit = {
+    val name = new String(Character.toChars(char))
+    readChar()
+    var cp = 0L
+    for (_ <- 0 until digits) {
+      val digit = char match {
+        case c if c >= '0' && c <= '9' => c - '0'
+        case c if c >= 'a' && c <= 'f' => c - 'a' + 10
+        case c if c >= 'A' && c <= 'F' => c - 'A' + 10
+        case _ =>
+          throw new ParseException(start, s"Escape sequence '\\$name' requires $digits hexadecimal digits")
+      }
+      cp = cp * 16 + digit
+      readChar()
+    }
+    if (cp > 0x10ffff) {
+      throw new ParseException(start, s"Escape sequence '\\$name' is not a valid unicode code point")
+    }
+    appendCodePoint(tokenBuffer, cp.toInt)
   }
 
   // single-quoted text has no escapes, except '' for a literal '

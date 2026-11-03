@@ -209,6 +209,41 @@ object StringTest extends TestSuite {
               |""".stripMargin) ==> Str("\"# not a comment\"\n")
       read(""""> not a block"""") ==> Str("""> not a block""")
     }
+    test("quoted escapes") {
+      read(""""\0\a\b\t\n\v\f\r\e"""") ==> Str("\u0000\u0007\b\t\n\u000b\f\r\u001b")
+      read(""""\ \"\/\\"""") ==> Str(" \"/\\")
+      read(""""\N\_\L\P"""") ==> Str("\u0085\u00a0\u2028\u2029")
+      read("\"a\\\tb\"") ==> Str("a\tb")
+      read("\"\\x41\\u00e9\\U0001F600\"") ==> Str("Aé😀")
+      read("\"\\uD83D\\uDE00\"") ==> Str("😀")
+      read(""""\xfF"""") ==> Str("\u00ff")
+      read(""""a\\"""") ==> Str("a\\") // the backslash doesn't escape the quote
+      read(""""\\n"""") ==> Str("\\n")
+    }
+    test("quoted escapes everywhere") {
+      read("""a: "x\ny"""") ==> Obj("a" -> Str("x\ny"))
+      read("""- "x\ny"""") ==> Arr(Str("x\ny"))
+      read("""{"a\tb": ["x\ny"]}""") ==> Obj("a\tb" -> Arr(Str("x\ny")))
+    }
+    test("quoted line continuation") {
+      read("\"a\\\n   b\"") ==> Str("ab")
+      read("\"a\\\r\n\tb\"") ==> Str("ab")
+    }
+    test("quoted invalid escapes") {
+      def error(yaml: String) = assertThrows[ParseException](read(yaml))
+
+      val invalid = error("""a: "x\qy"""")
+      invalid.message ==> """Invalid escape sequence '\q'"""
+      invalid.position.line ==> 1
+      invalid.position.col ==> 6 // at the backslash
+
+      error(""""\x4"""").message ==> """Escape sequence '\x' requires 2 hexadecimal digits"""
+      error("\"\\u00g0\"").message ==> "Escape sequence '\\u' requires 4 hexadecimal digits"
+      error(""""\U00110000"""").message ==> """Escape sequence '\U' is not a valid unicode code point"""
+      error(""""\UFFFFFFFF"""").message ==> """Escape sequence '\U' is not a valid unicode code point"""
+      error("\"a\\").message ==> "Expected closing \" but reached EOF"
+      error("\"\\x4").message ==> """Escape sequence '\x' requires 2 hexadecimal digits"""
+    }
     test("single quoted") {
       read("''") ==> Str("")
       read("'a'") ==> Str("a")
